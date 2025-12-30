@@ -2,15 +2,24 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Recuerdo | Memoriales digitales</title>
-  <meta name="description" content="Memoriales digitales con QR: fotos, videos, audios y mensajes." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Memoriales digitales con código QR. Un espacio respetuoso para recordar con fotos, mensajes y recuerdos." />
+  <meta name="theme-color" content="#0b0c10" />
+
+  <title>Imprime tu Recuerdo | Memoriales digitales</title>
+
+  <!-- CSS principal -->
   <link rel="stylesheet" href="assets/css/main.css" />
 </head>
+
 <body>
+  <!-- Header -->
   <header class="top">
     <div class="wrap top__row">
-      <a class="brand" href="./">Recuerdo</a>
+      <div class="brand">
+        Imprime tu Recuerdo
+      </div>
+
       <nav class="nav">
         <a href="#servicio">Servicio</a>
         <a href="#proceso">Proceso</a>
@@ -19,60 +28,90 @@
     </div>
   </header>
 
+  <!-- Contenido principal -->
   <main class="wrap">
+
+    <!-- Hero -->
     <section class="hero">
-      <h1>Memoriales digitales con QR</h1>
+      <h1>Memoriales digitales con código QR</h1>
       <p>
-        Creamos un espacio respetuoso para conservar recuerdos:
-        fotos, videos, audios y mensajes de familia y amigos.
+        Creamos un espacio digital respetuoso y permanente para recordar.
+        Accede desde una placa con QR y encuentra fotos, mensajes y recuerdos.
       </p>
+
       <div class="cta">
-        <a class="btn" href="#contacto">Cotizar</a>
-        <a class="btn ghost" href="#proceso">Cómo funciona</a>
+        <a href="#contacto" class="btn">Solicitar memorial</a>
+        <a href="#proceso" class="btn ghost">Cómo funciona</a>
       </div>
     </section>
 
+    <!-- Servicio -->
     <section id="servicio" class="section">
-      <h2>Qué incluye</h2>
+      <h2>Qué incluye el servicio</h2>
+
       <div class="grid3">
         <article class="card">
           <h3>Memorial web</h3>
-          <p>Diseño limpio, pensado para celular, con URL propia.</p>
+          <p>
+            Página privada y elegante con nombre, fechas, imágenes y recuerdos.
+          </p>
         </article>
+
         <article class="card">
-          <h3>QR para placa</h3>
-          <p>El QR abre el memorial en segundos desde cualquier teléfono.</p>
+          <h3>Código QR</h3>
+          <p>
+            QR listo para placa impresa en material duradero.
+          </p>
         </article>
+
         <article class="card">
           <h3>Mensajes</h3>
-          <p>La familia y amigos pueden dejar comentarios identificados.</p>
+          <p>
+            Familia y amigos pueden dejar mensajes con su nombre.
+          </p>
         </article>
       </div>
     </section>
 
+    <!-- Proceso -->
     <section id="proceso" class="section">
-      <h2>Proceso</h2>
+      <h2>Cómo funciona</h2>
+
       <ol class="steps">
-        <li>Recibimos material (fotos, texto, video/audio).</li>
-        <li>Armamos el memorial y lo validas.</li>
-        <li>Generamos el QR definitivo para la placa.</li>
+        <li>Nos envías fotos, texto y recuerdos.</li>
+        <li>Diseñamos el memorial digital.</li>
+        <li>Generamos el QR final para la placa.</li>
       </ol>
     </section>
 
+    <!-- Contacto -->
     <section id="contacto" class="section">
       <h2>Contacto</h2>
-      <p>Escríbeme para cotizar y definir el memorial.</p>
+      <p>
+        Para cotizar o solicitar un memorial, escríbenos.
+      </p>
+
       <div class="contact">
-        <a class="btn" href="mailto:contacto@recuerdo.cl">contacto@recuerdo.cl</a>
-        <a class="btn ghost" href="#" id="wa">WhatsApp</a>
+        <a class="btn" href="mailto:contacto@imprimeturecuerdo.cl">
+          contacto@imprimeturecuerdo.cl
+        </a>
+
+        <a class="btn ghost" id="wa" href="#">
+          WhatsApp
+        </a>
       </div>
     </section>
 
+    <!-- Footer -->
     <footer class="footer">
-      <small>© <span id="year"></span> Recuerdo</small>
+      <small>
+        © <span id="year"></span> Imprime tu Recuerdo
+      </small>
     </footer>
+
   </main>
 
+  <!-- JS principal -->
   <script src="assets/js/main.js"></script>
 </body>
 </html>
