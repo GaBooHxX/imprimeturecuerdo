@@ -1,1 +1,18 @@
+{
+  "name": "Camilo Fuentes Covarrubias",
+  "dates": "1992 - 2024",
+  "bio": "Camilo será recordado por su alegría, cercanía y el cariño que entregó a quienes lo rodearon.",
+  "cover": "../../assets/img/Camilo-Fuentes-Covarrubias/cover.jpg",
+  "gallery": [
+    "../../assets/img/Camilo-Fuentes-Covarrubias/1.jpg",
+    "../../assets/img/Camilo-Fuentes-Covarrubias/2.jpg",
+    "../../assets/img/Camilo-Fuentes-Covarrubias/3.jpg"
+  ],
+  "video": {
+    "youtubeEmbedUrl": "https://www.youtube.com/embed/XXXXXXXXXXX"
+  },
+  "audio": {
+    "src": "../../assets/audio/Camilo-Fuentes-Covarrubias/mensaje.mp3"
+  }
+}
 
