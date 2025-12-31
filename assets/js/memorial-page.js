@@ -3,7 +3,6 @@ async function loadMemorial(){
   if (!res.ok) throw new Error("No se pudo cargar data.json");
   const d = await res.json();
 
-  // Título
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
   // Datos básicos
@@ -15,11 +14,10 @@ async function loadMemorial(){
   document.getElementById("dates").textContent = d.dates || "";
   document.getElementById("bio").textContent = d.bio || "";
 
-  // Galería
+  // Galería (botones clickeables)
   const gallery = Array.isArray(d.gallery) ? d.gallery : [];
   const g = document.getElementById("gallery");
 
-  // IMPORTANTE: renderiza como BOTONES clickeables
   g.innerHTML = gallery.map((src, i) => `
     <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
       <img class="mThumb" src="${src}" alt="" loading="lazy" draggable="false">
@@ -61,30 +59,34 @@ async function loadMemorial(){
     document.body.style.overflow = "";
   }
 
-  // Click en miniaturas
+  // Abrir al click en miniatura
   g.addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
-  // Cerrar
-  lbClose.addEventListener("click", closeLb);
-
-  // Click fuera de la imagen
-  lb.addEventListener("click", (e) => {
-    if (e.target === lb) closeLb();
+  // Cerrar (botón)
+  lbClose.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeLb();
   });
 
-  // Teclado
+  // Cerrar tocando el fondo oscuro
+  lb.addEventListener("click", (e) => {
+    // si tocó la imagen, no cerrar
+    if (e.target === lbImg) return;
+    closeLb();
+  });
+
+  // Teclado (en PC)
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
-    if (e.key === "ArrowRight") openLb((current + 1) % gallery.length);
-    if (e.key === "ArrowLeft") openLb((current - 1 + gallery.length) % gallery.length);
+    if (e.key === "ArrowRight" && gallery.length) openLb((current + 1) % gallery.length);
+    if (e.key === "ArrowLeft" && gallery.length) openLb((current - 1 + gallery.length) % gallery.length);
   });
 }
 
-loadMemorial().catch((err) => {
-  console.error(err);
-});
+loadMemorial().catch(console.error);
