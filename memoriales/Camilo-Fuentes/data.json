@@ -3,21 +3,86 @@
   "dates": "1966 - 2025",
   "bio": "Camilo será recordado por su alegría, cercanía y el cariño que entregó a quienes lo rodearon.",
   "cover": "../../assets/img/Camilo-Fuentes/cover.jpg",
-  "gallery": [
-    "../../assets/img/Camilo-Fuentes/1.jpg",
-    "../../assets/img/Camilo-Fuentes/2.jpg",
-    "../../assets/img/Camilo-Fuentes/3.jpg",
-    "../../assets/img/Camilo-Fuentes/4.jpg",
-    "../../assets/img/Camilo-Fuentes/5.jpg",
-    "../../assets/img/Camilo-Fuentes/6.jpg",
-    "../../assets/img/Camilo-Fuentes/7.jpg",
-    "../../assets/img/Camilo-Fuentes/8.jpg",
-    "../../assets/img/Camilo-Fuentes/9.jpg"
-  ],
-  "video": {
-    "youtubeEmbedUrl": "https://www.youtube.com/embed/XXXXXXXXXXX"
+
+  "hero": {
+    "subtitle": "Siempre en nuestros corazones",
+    "verse": "Tu recuerdo vive en cada sonrisa, en cada historia y en cada abrazo que nos dejaste."
   },
+
+  "quotes": [
+    "Gracias por tu amor y tus enseñanzas.",
+    "Tu luz sigue acompañándonos.",
+    "Te recordaremos con alegría."
+  ],
+
+  "sections": [
+    {
+      "title": "Historia",
+      "type": "text",
+      "content": "Aquí va un texto más largo: quién fue, qué le gustaba, cómo lo recuerdan, etc. Ideal 6 a 12 líneas."
+    },
+    {
+      "title": "Frases y recuerdos",
+      "type": "bullets",
+      "items": [
+        "Amante de la familia y de los momentos simples.",
+        "Siempre dispuesto a ayudar.",
+        "Su risa llenaba la casa."
+      ]
+    },
+    {
+      "title": "Velas virtuales",
+      "type": "candle",
+      "content": "Enciende una vela como señal de cariño y respeto."
+    }
+  ],
+
+  "gallery": [
+    {
+      "src": "../../assets/img/Camilo-Fuentes/1.jpg",
+      "caption": "Un momento especial"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/2.jpg",
+      "caption": "Compartiendo en familia"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/3.jpg",
+      "caption": "Una sonrisa inolvidable"
+    }
+        {
+      "src": "../../assets/img/Camilo-Fuentes/4.jpg",
+      "caption": "Un momento especial"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/5.jpg",
+      "caption": "Compartiendo en familia"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/6.jpg",
+      "caption": "Una sonrisa inolvidable"
+    }
+        {
+      "src": "../../assets/img/Camilo-Fuentes/7.jpg",
+      "caption": "Un momento especial"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/8.jpg",
+      "caption": "Compartiendo en familia"
+    },
+    {
+      "src": "../../assets/img/Camilo-Fuentes/9.jpg",
+      "caption": "Una sonrisa inolvidable"
+    }
+  ],
+
+  "video": {
+    "youtubeEmbedUrl": "https://www.youtube.com/embed/XXXXXXXXXXX",
+    "caption": "Homenaje en video"
+  },
+
   "audio": {
-    "src": "../../assets/audio/Camilo-Fuentes/mensaje.mp3"
+    "src": "../../assets/audio/Camilo-Fuentes/mensaje.mp3",
+    "caption": "Mensaje de la familia"
   }
 }
