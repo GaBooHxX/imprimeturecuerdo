@@ -135,3 +135,45 @@ a:hover{opacity:.95}
   .mGallery{grid-template-columns:1fr}
   .mThumb{height:220px}
 }
+
+.mThumbBtn{
+  padding:0;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  border-radius:12px;
+}
+
+.lb{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.78);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:9999;
+}
+
+.lb__img{
+  max-width:min(1100px, 96vw);
+  max-height:86vh;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.12);
+}
+
+.lb__close{
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:44px;
+  height:44px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  font-size:28px;
+  line-height:1;
+  cursor:pointer;
+}
+.lb__close:hover{background:rgba(255,255,255,.10)}
