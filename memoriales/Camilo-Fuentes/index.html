@@ -4,29 +4,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- No indexar memorial -->
+  <!-- No indexar -->
   <meta name="robots" content="noindex, nofollow" />
 
-  <title>Camilo Fuentes Covarrubias | Memorial</title>
+  <title>Memorial</title>
 
-  <!-- CSS MEMORIAL (RUTA CORRECTA) -->
-  <link rel="stylesheet" href="../../assets/css/memorial.css">
+  <!-- CSS memorial -->
+  <link rel="stylesheet" href="../../assets/css/memorial.css" />
 </head>
 
 <body>
   <!-- Barra superior -->
   <header class="mTop">
     <div class="mWrap">
-      <a href="../../index.html" class="mBack">← Inicio</a>
+      <a href="/" class="mBack">← Inicio</a>
       <strong>Imprime tu Recuerdo</strong>
     </div>
   </header>
 
   <!-- Contenido -->
   <main class="mWrap">
-
     <!-- Portada -->
-    <img id="cover" class="mCover" alt="Foto conmemorativa">
+    <img id="cover" class="mCover" alt="">
 
     <!-- Datos -->
     <h1 id="name" class="mName"></h1>
@@ -42,14 +41,13 @@
     <!-- Video -->
     <section class="mSection" id="videoSection" hidden>
       <h2>Video</h2>
-      <iframe
-        id="videoFrame"
-        width="100%"
-        height="360"
-        allowfullscreen
-        loading="lazy"
-        style="border-radius:14px;border:0">
-      </iframe>
+      <div class="mVideo">
+        <iframe
+          id="videoFrame"
+          allowfullscreen
+          loading="lazy">
+        </iframe>
+      </div>
     </section>
 
     <!-- Audio -->
@@ -57,10 +55,15 @@
       <h2>Audio</h2>
       <audio id="audioPlayer" controls style="width:100%"></audio>
     </section>
-
   </main>
 
-  <!-- JS MEMORIAL (RUTA CORRECTA) -->
+  <!-- LIGHTBOX (OBLIGATORIO para que funcione) -->
+  <div id="lightbox" class="lb" hidden>
+    <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
+    <img id="lbImg" class="lb__img" alt="">
+  </div>
+
+  <!-- JS memorial -->
   <script src="../../assets/js/memorial-page.js"></script>
 </body>
 </html>
