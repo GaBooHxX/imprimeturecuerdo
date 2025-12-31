@@ -1,9 +1,12 @@
 async function loadMemorial(){
   const res = await fetch("data.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("No se pudo cargar data.json");
   const d = await res.json();
 
+  // Título
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
+  // Datos básicos
   const cover = document.getElementById("cover");
   cover.src = d.cover || "";
   cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
@@ -12,20 +15,23 @@ async function loadMemorial(){
   document.getElementById("dates").textContent = d.dates || "";
   document.getElementById("bio").textContent = d.bio || "";
 
+  // Galería
   const gallery = Array.isArray(d.gallery) ? d.gallery : [];
   const g = document.getElementById("gallery");
 
-  // Render galería como botones clickeables
+  // IMPORTANTE: renderiza como BOTONES clickeables
   g.innerHTML = gallery.map((src, i) => `
     <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-      <img class="mThumb" src="${src}" alt="" loading="lazy">
+      <img class="mThumb" src="${src}" alt="" loading="lazy" draggable="false">
     </button>
   `).join("");
 
   // Video
   if (d.video?.youtubeEmbedUrl){
     document.getElementById("videoSection").hidden = false;
-    document.getElementById("videoFrame").src = d.video.youtubeEmbedUrl;
+    const vf = document.getElementById("videoFrame");
+    vf.src = d.video.youtubeEmbedUrl;
+    vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
   }
 
   // Audio
@@ -55,26 +61,30 @@ async function loadMemorial(){
     document.body.style.overflow = "";
   }
 
+  // Click en miniaturas
   g.addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
+  // Cerrar
   lbClose.addEventListener("click", closeLb);
 
+  // Click fuera de la imagen
   lb.addEventListener("click", (e) => {
     if (e.target === lb) closeLb();
   });
 
-  // Teclado: ESC cierra, flechas navegan
+  // Teclado
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
-
     if (e.key === "Escape") closeLb();
     if (e.key === "ArrowRight") openLb((current + 1) % gallery.length);
     if (e.key === "ArrowLeft") openLb((current - 1 + gallery.length) % gallery.length);
   });
 }
 
-loadMemorial();
+loadMemorial().catch((err) => {
+  console.error(err);
+});
