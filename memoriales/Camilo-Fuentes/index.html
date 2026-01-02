@@ -56,7 +56,16 @@
 
       <p id="authError" class="meta" style="color:#e07a7a; margin-top:8px;" hidden></p>
     </section>
+<div id="uidRow" class="authRow" style="margin-top:10px" hidden>
+  <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+    <span>Tu UID:</span>
+    <code id="myUid" style="opacity:.9"></code>
+  </div>
 
+  <button id="copyUid" class="gBtn ghost" type="button">
+    Copiar UID
+  </button>
+</div>
     <!-- Contenido emocional dinámico -->
     <div id="extraBlocks"></div>
 
@@ -163,6 +172,39 @@
 
   <!-- JS memorial -->
   <script type="module" src="../../assets/js/memorial-page.js"></script>
+<section class="mSection" id="modPanel" hidden>
+  <h2>Panel de moderación</h2>
+  <p class="meta" id="modRoleText" style="margin-top:6px"></p>
 
+  <div style="display:grid; gap:14px; margin-top:12px">
+
+    <!-- Promover por UID -->
+    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
+      <h3 style="margin:0 0 8px 0">Hacer moderador (1 click)</h3>
+      <p class="meta" style="margin-top:0">Pega el UID del usuario (te lo puede copiar desde la misma página).</p>
+
+      <div class="authRow">
+        <input id="promoteUid" placeholder="UID del usuario" style="flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:inherit">
+        <button id="btnMakeMod" class="lb__btn primary" type="button">Hacer moderador</button>
+        <button id="btnRemoveMod" class="lb__btn ghost" type="button">Quitar moderador</button>
+      </div>
+
+      <div class="lb__hint" id="promoteMsg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- Reportes -->
+    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
+      <h3 style="margin:0 0 8px 0">Reportes</h3>
+      <div id="reportsList" class="lb__comments"></div>
+    </div>
+
+    <!-- Bloqueados -->
+    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
+      <h3 style="margin:0 0 8px 0">Usuarios bloqueados</h3>
+      <div id="blockedList" class="lb__comments"></div>
+    </div>
+
+  </div>
+</section>
 </body>
 </html>
