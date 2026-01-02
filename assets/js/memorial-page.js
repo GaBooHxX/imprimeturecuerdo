@@ -79,6 +79,7 @@ function showAuthError(msg){
 
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
+  await initAuthPersistence();
   // Completa el login si venía de redirect y muestra error si falla
   try{
     await getRedirectResult(auth);
