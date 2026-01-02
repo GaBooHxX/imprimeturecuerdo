@@ -2,16 +2,18 @@ import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  signOut,
-  onAuthStateChanged,
-  setPersistence,
-  browserLocalPersistence
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  deleteDoc,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 import {
   getFirestore,
@@ -53,6 +55,13 @@ function commentsCol(memorialId, photoIndex){
 }
 function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
+}
+// ✅ Velas globales (a nivel memorial)
+function candlesCol(memorialId){
+  return collection(db, "memorials", memorialId, "candles");
+}
+function candleDoc(memorialId, uid){
+  return doc(db, "memorials", memorialId, "candles", uid);
 }
 
 function showAuthError(msg){
@@ -205,6 +214,7 @@ async function loadMemorial(){
   }
 
   setupLightboxFirebase(d, gallery);
+  setupGlobalCandles(getMemorialId());
 }
 
 /* ---------------- Emotional blocks ---------------- */
@@ -216,7 +226,69 @@ function injectEmotionalBlocks(d){
     const bio = document.getElementById("bio");
     bio.parentNode.insertBefore(host, bio.nextSibling);
   }
+function setupGlobalCandles(memorialId){
+  const btn = document.getElementById("candleBtn");
+  const out = document.getElementById("candleCount");
+  if (!btn || !out) return;
 
+  // Escucha TOTAL de velas (realtime)
+  onSnapshot(candlesCol(memorialId), (snap) => {
+    out.textContent = `🕯️ ${snap.size} velas encendidas`;
+  });
+
+  // Estado por usuario (toggle)
+  onAuthStateChanged(auth, async (user) => {
+    if (!user){
+      btn.disabled = true;
+      btn.textContent = "Inicia sesión para encender una vela";
+      return;
+    }
+
+    btn.disabled = false;
+
+    const ref = candleDoc(memorialId, user.uid);
+    const snap = await getDoc(ref);
+
+    // Texto según estado
+    btn.textContent = snap.exists()
+      ? "🕯️ Apagar vela"
+      : "🕯️ Encender vela";
+
+    // Toggle
+    btn.onclick = async () => {
+      const again = await getDoc(ref);
+      if (again.exists()){
+        await deleteDoc(ref);
+        candleBurst(); // efecto bonito
+      } else {
+        await setDoc(ref, {
+          uid: user.uid,
+          name: user.displayName || "Usuario",
+          createdAt: serverTimestamp()
+        });
+        candleBurst(); // efecto bonito
+      }
+    };
+  });
+}
+  function candleBurst(){
+  // Efecto simple: partículas doradas
+  const n = 18;
+  for (let i = 0; i < n; i++){
+    const p = document.createElement("div");
+    p.className = "cSpark";
+    p.style.left = (50 + (Math.random()*20 - 10)) + "%";
+    p.style.top = (Math.random()*6 + 2) + "px";
+    p.style.setProperty("--dx", (Math.random()*220 - 110) + "px");
+    p.style.setProperty("--dy", (Math.random()*-160 - 40) + "px");
+    p.style.setProperty("--d", (700 + Math.random()*500) + "ms");
+
+    const host = document.getElementById("extraBlocks") || document.body;
+    host.appendChild(p);
+
+    setTimeout(() => p.remove(), 1400);
+  }
+}
   const hero = d.hero || {};
   const quotes = Array.isArray(d.quotes) ? d.quotes : [];
   const sections = Array.isArray(d.sections) ? d.sections : [];
@@ -274,8 +346,6 @@ function injectEmotionalBlocks(d){
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
 
   // Vela local
-  const btn = document.getElementById("candleBtn");
-  const out = document.getElementById("candleCount");
   if (btn && out){
     const key = "candles_" + (d.name || "memorial");
     const current = Number(localStorage.getItem(key) || "0");
