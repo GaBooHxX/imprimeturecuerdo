@@ -321,11 +321,6 @@ function setupLightboxFirebase(d, gallery){
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    await setDoc(photoDoc(memorialId, i), {
-      memorialName: d.name || "",
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
