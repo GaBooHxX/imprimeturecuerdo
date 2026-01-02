@@ -5,11 +5,11 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import {
   getAuth,
   GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  signOut,
-  onAuthStateChanged,
   setPersistence,
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
@@ -17,8 +17,9 @@ import {
 import {
   getFirestore,
   doc,
-  setDoc,
   getDoc,
+  setDoc,
+  updateDoc,
   deleteDoc,
   collection,
   addDoc,
@@ -36,7 +37,7 @@ const provider = new GoogleAuthProvider();
 
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
-  return String(s)
+  return String(s ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -48,21 +49,6 @@ function getMemorialId(){
   const parts = location.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("memoriales");
   return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
-}
-
-function commentsCol(memorialId, photoIndex){
-  return collection(db, "memorials", memorialId, "photos", String(photoIndex), "comments");
-}
-function reactionsCol(memorialId, photoIndex){
-  return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
-}
-
-// ✅ Velas globales (a nivel memorial)
-function candlesCol(memorialId){
-  return collection(db, "memorials", memorialId, "candles");
-}
-function candleDoc(memorialId, uid){
-  return doc(db, "memorials", memorialId, "candles", uid);
 }
 
 function showAuthError(msg){
@@ -85,7 +71,22 @@ async function initAuthPersistence(){
   }
 }
 
-/* ---------------- Login (POPUP + fallback REDIRECT) ---------------- */
+/* --- rutas firestore --- */
+const adminDoc = (uid) => doc(db, "admins", uid);
+
+const roleDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "roles", uid);
+const blockedDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "blocked", uid);
+
+const candlesCol = (memorialId) => collection(db, "memorials", memorialId, "candles");
+const candleDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "candles", uid);
+
+const commentsCol = (memorialId, photoIndex) =>
+  collection(db, "memorials", memorialId, "photos", String(photoIndex), "comments");
+
+const reactionsCol = (memorialId, photoIndex) =>
+  collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
+
+/* ---------------- Auth (popup + fallback redirect) ---------------- */
 async function loginGoogle(){
   showAuthError("");
   await initAuthPersistence();
@@ -94,6 +95,7 @@ async function loginGoogle(){
     await signInWithPopup(auth, provider);
   }catch(err){
     const code = err?.code || "";
+    // fallback móvil / bloqueos popup
     if (
       code === "auth/popup-blocked" ||
       code === "auth/popup-closed-by-user" ||
@@ -107,9 +109,26 @@ async function loginGoogle(){
   }
 }
 
-/* ---------------- Global auth UI (solo 1 vez) ---------------- */
-let globalAuthReady = false;
+/* ---------------- Roles (admin / moderator) + bloqueo ---------------- */
+async function getPrivileges(memorialId, user){
+  if (!user) return { isAdmin:false, isModerator:false, isBlocked:false };
 
+  const [a, r, b] = await Promise.all([
+    getDoc(adminDoc(user.uid)),
+    getDoc(roleDoc(memorialId, user.uid)),
+    getDoc(blockedDoc(memorialId, user.uid))
+  ]);
+
+  const isAdmin = a.exists();
+  const role = r.exists() ? String(r.data()?.role || "") : "";
+  const isModerator = isAdmin || role === "owner" || role === "moderator";
+  const isBlocked = b.exists();
+
+  return { isAdmin, isModerator, isBlocked, role };
+}
+
+/* ---------------- UI: Login global ---------------- */
+let globalAuthReady = false;
 function setupGlobalAuthUI(){
   if (globalAuthReady) return;
   globalAuthReady = true;
@@ -118,104 +137,30 @@ function setupGlobalAuthUI(){
   const btnLogoutMain = document.getElementById("btnLogoutMain");
   const authStatus = document.getElementById("authStatus");
 
-  if (btnLoginMain){
-    btnLoginMain.addEventListener("click", async () => {
-      try{ await loginGoogle(); } catch(e){}
-    });
-  }
+  btnLoginMain?.addEventListener("click", async () => {
+    try { await loginGoogle(); } catch(e){}
+  });
 
-  if (btnLogoutMain){
-    btnLogoutMain.addEventListener("click", async () => {
-      showAuthError("");
-      try{ await signOut(auth); }
-      catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
-    });
-  }
-
-  onAuthStateChanged(auth, (user) => {
-    if (authStatus){
-      authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
+  btnLogoutMain?.addEventListener("click", async () => {
+    showAuthError("");
+    try { await signOut(auth); } catch(e){
+      showAuthError(`No se pudo cerrar sesión. Error: ${e?.code || "desconocido"}`);
     }
-    if (btnLoginMain) btnLoginMain.hidden = !!user;
-    if (btnLogoutMain) btnLogoutMain.hidden = !user;
+  });
+
+  onAuthStateChanged(auth, async (user) => {
+    authStatus && (authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado");
+    btnLoginMain && (btnLoginMain.hidden = !!user);
+    btnLogoutMain && (btnLogoutMain.hidden = !user);
     if (user) showAuthError("");
   });
 }
 
-/* ---------------- Efecto vela bonito ---------------- */
-function candleBurst(){
-  const host = document.getElementById("extraBlocks") || document.body;
-  const n = 18;
-  for (let i = 0; i < n; i++){
-    const p = document.createElement("div");
-    p.className = "cSpark";
-    p.style.left = (50 + (Math.random()*20 - 10)) + "%";
-    p.style.top = (Math.random()*6 + 2) + "px";
-    p.style.setProperty("--dx", (Math.random()*220 - 110) + "px");
-    p.style.setProperty("--dy", (Math.random()*-160 - 40) + "px");
-    p.style.setProperty("--d", (700 + Math.random()*500) + "ms");
-    host.appendChild(p);
-    setTimeout(() => p.remove(), 1400);
-  }
-}
-
-/* ---------------- Velas globales ---------------- */
-function setupGlobalCandles(memorialId){
-  const btn = document.getElementById("candleBtn");
-  const out = document.getElementById("candleCount");
-  if (!btn || !out) return;
-
-  // Total velas realtime
-  onSnapshot(candlesCol(memorialId), (snap) => {
-    out.textContent = `🕯️ ${snap.size} velas encendidas`;
-  });
-
-  let unsubUserDoc = null;
-
-  onAuthStateChanged(auth, (user) => {
-    if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
-
-    if (!user){
-      btn.disabled = true;
-      btn.textContent = "Inicia sesión para encender una vela";
-      btn.onclick = null;
-      return;
-    }
-
-    btn.disabled = false;
-
-    const ref = candleDoc(memorialId, user.uid);
-
-    // Escuchar si el usuario ya encendió (realtime)
-    unsubUserDoc = onSnapshot(ref, (snap) => {
-      btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
-    });
-
-    btn.onclick = async () => {
-      const snap = await getDoc(ref);
-      if (snap.exists()){
-        await deleteDoc(ref);
-      } else {
-        await setDoc(ref, {
-          uid: user.uid,
-          name: user.displayName || "Usuario",
-          createdAt: serverTimestamp()
-        });
-      }
-      candleBurst();
-    };
-  });
-}
-
-/* ---------------- Emotional blocks ---------------- */
+/* ---------------- Emotional blocks + velas globales ---------------- */
 function injectEmotionalBlocks(d){
-  let host = document.getElementById("extraBlocks");
-  if (!host){
-    host = document.createElement("div");
-    host.id = "extraBlocks";
-    const bio = document.getElementById("bio");
-    bio.parentNode.insertBefore(host, bio.nextSibling);
-  }
+  // NO uses el div extraBlocks del HTML para inyectar otra vez: ya existe
+  const host = document.getElementById("extraBlocks");
+  if (!host) return;
 
   const hero = d.hero || {};
   const quotes = Array.isArray(d.quotes) ? d.quotes : [];
@@ -259,6 +204,7 @@ function injectEmotionalBlocks(d){
           <p class="meta">${escapeHtml(sec.content || "")}</p>
           <button class="mCandleBtn" type="button" id="candleBtn">🕯️ Encender vela</button>
           <p class="meta" id="candleCount" style="margin-top:10px"></p>
+          <p class="meta" id="candleHint" style="margin-top:6px; opacity:.8"></p>
         </section>
       `;
     }
@@ -274,23 +220,103 @@ function injectEmotionalBlocks(d){
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
 }
 
-/* ---------------- Lightbox + Firebase comments/reactions ---------------- */
+function candleBurst(){
+  // partículas doradas (usa tu CSS .cSpark)
+  const btn = document.getElementById("candleBtn");
+  if (!btn) return;
+
+  const rect = btn.getBoundingClientRect();
+  const x = rect.left + rect.width/2;
+  const y = rect.top + rect.height/2;
+
+  const n = 18;
+  for (let i=0;i<n;i++){
+    const p = document.createElement("div");
+    p.className = "cSpark";
+    p.style.position = "fixed";
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+    p.style.setProperty("--dx", (Math.random()*220 - 110) + "px");
+    p.style.setProperty("--dy", (Math.random()*-160 - 40) + "px");
+    p.style.setProperty("--d", (700 + Math.random()*500) + "ms");
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1400);
+  }
+}
+
+function setupGlobalCandles(memorialId){
+  const btn = document.getElementById("candleBtn");
+  const out = document.getElementById("candleCount");
+  const hint = document.getElementById("candleHint");
+  if (!btn || !out) return;
+
+  // contador total
+  onSnapshot(candlesCol(memorialId), (snap) => {
+    out.textContent = `🕯️ ${snap.size} velas encendidas`;
+  });
+
+  onAuthStateChanged(auth, async (user) => {
+    const priv = await getPrivileges(memorialId, user);
+
+    if (!user){
+      btn.disabled = true;
+      btn.textContent = "Inicia sesión para encender una vela";
+      hint && (hint.textContent = "");
+      return;
+    }
+
+    if (priv.isBlocked){
+      btn.disabled = true;
+      btn.textContent = "No disponible";
+      hint && (hint.textContent = "Tu cuenta está bloqueada en este memorial.");
+      return;
+    }
+
+    btn.disabled = false;
+    const ref = candleDoc(memorialId, user.uid);
+    const snap = await getDoc(ref);
+
+    btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
+
+    btn.onclick = async () => {
+      const again = await getDoc(ref);
+      if (again.exists()){
+        await deleteDoc(ref);
+        btn.textContent = "🕯️ Encender vela";
+      } else {
+        await setDoc(ref, {
+          uid: user.uid,
+          name: user.displayName || "Usuario",
+          createdAt: serverTimestamp()
+        });
+        btn.textContent = "🕯️ Apagar vela";
+      }
+      candleBurst();
+    };
+  });
+}
+
+/* ---------------- Lightbox + comentarios + reacciones + moderación ---------------- */
 function setupLightboxFirebase(d, gallery){
   const memorialId = getMemorialId();
 
+  // Lightbox base
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
 
+  // Auth inside LB
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
   const userInfo = document.getElementById("userInfo");
 
+  // Comments
   const commentText = document.getElementById("commentText");
   const btnComment = document.getElementById("btnComment");
   const commentHint = document.getElementById("commentHint");
   const commentsList = document.getElementById("commentsList");
 
+  // Totals
   const totals = {
     "❤️": document.getElementById("t_heart"),
     "🙏": document.getElementById("t_pray"),
@@ -308,18 +334,34 @@ function setupLightboxFirebase(d, gallery){
   let unsubComments = null;
   let unsubReactions = null;
 
+  // estado
+  let priv = { isAdmin:false, isModerator:false, isBlocked:false };
+
+  async function refreshPrivileges(){
+    priv = await getPrivileges(memorialId, auth.currentUser);
+  }
+
   function setAuthUI(user){
     const reactBtns = document.querySelectorAll(".rBtn");
 
     if (user){
-      userInfo.textContent = `${user.displayName || "Usuario"} (conectado)`;
+      userInfo.textContent = `${user.displayName || "Usuario"}${priv.isModerator ? " (moderador)" : ""}`;
       btnLogin.hidden = true;
       btnLogout.hidden = false;
 
-      commentText.disabled = false;
-      btnComment.disabled = false;
-      commentHint.style.display = "none";
-      reactBtns.forEach(b => b.disabled = false);
+      // si bloqueado, deshabilitamos todo
+      if (priv.isBlocked){
+        commentText.disabled = true;
+        btnComment.disabled = true;
+        commentHint.style.display = "block";
+        commentHint.textContent = "Tu cuenta está bloqueada en este memorial.";
+        reactBtns.forEach(b => b.disabled = true);
+      } else {
+        commentText.disabled = false;
+        btnComment.disabled = false;
+        commentHint.style.display = "none";
+        reactBtns.forEach(b => b.disabled = false);
+      }
     } else {
       userInfo.textContent = "Invitado";
       btnLogin.hidden = false;
@@ -328,63 +370,100 @@ function setupLightboxFirebase(d, gallery){
       commentText.disabled = true;
       btnComment.disabled = true;
       commentHint.style.display = "block";
+      commentHint.textContent = "Para comentar y reaccionar debes iniciar sesión.";
       reactBtns.forEach(b => b.disabled = true);
     }
   }
-
-  onAuthStateChanged(auth, (user) => setAuthUI(user));
 
   async function openLb(i){
     if (!gallery[i]?.src) return;
     current = i;
 
+    await refreshPrivileges();
+    setAuthUI(auth.currentUser);
+
     lbImg.src = gallery[i].src;
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
-    setAuthUI(auth.currentUser);
-
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
+    // COMMENTS realtime (filtra ocultos a no moderadores)
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
-      (snap) => {
+      async (snap) => {
+        // refresca privilegios por si cambió rol/bloqueo
+        await refreshPrivileges();
+
         if (snap.empty){
           commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
           return;
         }
-        commentsList.innerHTML = snap.docs.map(x => {
-          const c = x.data();
+
+        const visibleDocs = snap.docs.filter(docu => {
+          const c = docu.data() || {};
+          // si NO es moderador, no ve ocultos
+          if (!priv.isModerator) return c.hidden !== true;
+          return true;
+        });
+
+        if (!visibleDocs.length){
+          commentsList.innerHTML = `<div class="lb__hint">No hay comentarios visibles.</div>`;
+          return;
+        }
+
+        commentsList.innerHTML = visibleDocs.map(docu => {
+          const c = docu.data() || {};
           const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
+          const hiddenTag = (c.hidden === true) ? `<div class="lb__hint">Oculto</div>` : ``;
+
+          // botones de moderación (solo moderador)
+          const modBtns = priv.isModerator ? `
+            <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+              <button class="lb__btn ghost jsToggleHide"
+                data-cid="${docu.id}"
+                data-hidden="${c.hidden === true ? "1" : "0"}"
+                type="button">
+                ${c.hidden === true ? "Mostrar" : "Ocultar"}
+              </button>
+              <button class="lb__btn ghost jsBlockUser"
+                data-uid="${escapeHtml(c.uid || "")}"
+                data-name="${escapeHtml(c.name || "")}"
+                type="button">
+                Bloquear usuario
+              </button>
+            </div>
+          ` : "";
+
           return `
-            <div class="cItem">
+            <div class="cItem" data-cid="${docu.id}">
               <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
+              ${hiddenTag}
               <div>${escapeHtml(c.text || "")}</div>
               <div class="cMeta">${escapeHtml(ts)}</div>
+              ${modBtns}
             </div>
           `;
         }).join("");
       }
     );
 
-    unsubReactions = onSnapshot(
-      reactionsCol(memorialId, i),
-      (snap) => {
-        const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
-        snap.forEach(docu => {
-          const r = docu.data() || {};
-          for (const k of Object.keys(sum)){
-            sum[k] += Number(r[k] || 0);
-          }
-        });
-        totals["❤️"].textContent = String(sum["❤️"]);
-        totals["🙏"].textContent = String(sum["🙏"]);
-        totals["🕯️"].textContent = String(sum["🕯️"]);
-        totals["🌟"].textContent = String(sum["🌟"]);
-        totals["😢"].textContent = String(sum["😢"]);
-      }
-    );
+    // REACTIONS realtime
+    unsubReactions = onSnapshot(reactionsCol(memorialId, i), (snap) => {
+      const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
+      snap.forEach(docu => {
+        const r = docu.data() || {};
+        for (const k of Object.keys(sum)){
+          sum[k] += Number(r[k] || 0);
+        }
+      });
+      totals["❤️"].textContent = String(sum["❤️"]);
+      totals["🙏"].textContent = String(sum["🙏"]);
+      totals["🕯️"].textContent = String(sum["🕯️"]);
+      totals["🌟"].textContent = String(sum["🌟"]);
+      totals["😢"].textContent = String(sum["😢"]);
+    });
   }
 
   function closeLb(){
@@ -397,12 +476,14 @@ function setupLightboxFirebase(d, gallery){
     unsubReactions = null;
   }
 
+  // Abrir desde galería
   document.getElementById("gallery").addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
+  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -418,20 +499,29 @@ function setupLightboxFirebase(d, gallery){
     if (e.key === "Escape") closeLb();
   });
 
+  // Login/logout dentro lightbox
   btnLogin.addEventListener("click", async () => {
-    try{ await loginGoogle(); } catch(e){}
+    try { await loginGoogle(); await refreshPrivileges(); setAuthUI(auth.currentUser); }
+    catch(e){}
   });
 
   btnLogout.addEventListener("click", async () => {
     showAuthError("");
-    try{ await signOut(auth); }
-    catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
+    try { await signOut(auth); await refreshPrivileges(); setAuthUI(null); }
+    catch(e){ showAuthError(`No se pudo cerrar sesión. Error: ${e?.code || "desconocido"}`); }
   });
 
+  // Comentario
   btnComment.addEventListener("click", async () => {
     const user = auth.currentUser;
+    await refreshPrivileges();
+
     if (!user){
       showAuthError("Debes iniciar sesión para comentar.");
+      return;
+    }
+    if (priv.isBlocked){
+      showAuthError("Tu cuenta está bloqueada. No puedes comentar.");
       return;
     }
 
@@ -442,17 +532,25 @@ function setupLightboxFirebase(d, gallery){
       uid: user.uid,
       name: user.displayName || "Usuario",
       text: text.slice(0, 500),
+      hidden: false,
       createdAt: serverTimestamp()
     });
 
     commentText.value = "";
   });
 
+  // Reacciones (toggle 0/1 por usuario)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
+      await refreshPrivileges();
+
       if (!user){
         showAuthError("Debes iniciar sesión para reaccionar.");
+        return;
+      }
+      if (priv.isBlocked){
+        showAuthError("Tu cuenta está bloqueada. No puedes reaccionar.");
         return;
       }
 
@@ -465,6 +563,69 @@ function setupLightboxFirebase(d, gallery){
       await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
     });
   });
+
+  // Moderación (delegación de eventos dentro del listado de comentarios)
+  commentsList.addEventListener("click", async (e) => {
+    const hideBtn = e.target.closest(".jsToggleHide");
+    const blockBtn = e.target.closest(".jsBlockUser");
+    await refreshPrivileges();
+
+    if (hideBtn){
+      if (!priv.isModerator){
+        showAuthError("No tienes permisos de moderación.");
+        return;
+      }
+
+      const cid = hideBtn.dataset.cid;
+      const currentlyHidden = hideBtn.dataset.hidden === "1";
+      const user = auth.currentUser;
+
+      const cRef = doc(db, "memorials", memorialId, "photos", String(current), "comments", cid);
+
+      await updateDoc(cRef, {
+        hidden: !currentlyHidden,
+        hiddenBy: user?.uid || "",
+        hiddenAt: serverTimestamp()
+      });
+
+      return;
+    }
+
+    if (blockBtn){
+      if (!priv.isModerator){
+        showAuthError("No tienes permisos de moderación.");
+        return;
+      }
+
+      const targetUid = blockBtn.dataset.uid;
+      const targetName = blockBtn.dataset.name;
+
+      if (!targetUid) return;
+
+      // Evita auto-bloqueo accidental
+      if (auth.currentUser?.uid === targetUid){
+        showAuthError("No puedes bloquearte a ti mismo.");
+        return;
+      }
+
+      await setDoc(blockedDoc(memorialId, targetUid), {
+        blocked: true,
+        reason: "moderation",
+        targetName: targetName || "",
+        blockedBy: auth.currentUser?.uid || "",
+        createdAt: serverTimestamp()
+      }, { merge: true });
+
+      showAuthError(`Usuario bloqueado: ${targetName || targetUid}`);
+      return;
+    }
+  });
+
+  // actualizar UI auth cuando cambie sesión
+  onAuthStateChanged(auth, async (user) => {
+    await refreshPrivileges();
+    setAuthUI(user);
+  });
 }
 
 /* ---------------- Main ---------------- */
@@ -472,8 +633,15 @@ async function loadMemorial(){
   await initAuthPersistence();
   setupGlobalAuthUI();
 
-  // si venías de redirect
-  try{ await getRedirectResult(auth); } catch(e){}
+  // Completa redirect si venías de redirect login
+  try{
+    await getRedirectResult(auth);
+  }catch(err){
+    const code = err?.code || "";
+    if (code && code !== "auth/no-auth-event"){
+      showAuthError(`No se pudo completar el inicio de sesión. Error: ${code}`);
+    }
+  }
 
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
@@ -481,6 +649,7 @@ async function loadMemorial(){
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
+  // básicos
   const cover = document.getElementById("cover");
   cover.src = d.cover || "";
   cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
@@ -489,8 +658,11 @@ async function loadMemorial(){
   document.getElementById("dates").textContent = d.dates || "";
   document.getElementById("bio").textContent = d.bio || "";
 
+  // emocional + velas globales
   injectEmotionalBlocks(d);
+  setupGlobalCandles(getMemorialId());
 
+  // galería
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
@@ -502,6 +674,7 @@ async function loadMemorial(){
     </button>
   `).join("");
 
+  // video
   if (d.video?.youtubeEmbedUrl){
     document.getElementById("videoSection").hidden = false;
     const vf = document.getElementById("videoFrame");
@@ -509,19 +682,13 @@ async function loadMemorial(){
     vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
   }
 
+  // audio
   if (d.audio?.src){
     document.getElementById("audioSection").hidden = false;
     document.getElementById("audioPlayer").src = d.audio.src;
   }
 
   setupLightboxFirebase(d, gallery);
-
-  // ✅ después de inyectar el HTML (porque recién ahí existe #candleBtn)
-  setupGlobalCandles(getMemorialId());
 }
 
 loadMemorial().catch(console.error);
-
-
-loadMemorial().catch(console.error);
-
