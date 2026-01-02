@@ -31,6 +31,14 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+async function initAuthPersistence(){
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+  }catch(e){
+    console.warn("No se pudo setear persistencia local:", e?.code || e);
+  }
+}
+
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
   return String(s)
