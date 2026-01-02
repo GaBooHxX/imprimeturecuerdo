@@ -1,25 +1,25 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
-  collection,
-  addDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import {
   getFirestore,
   doc,
   setDoc,
   getDoc,
+  deleteDoc,
   collection,
   addDoc,
   query,
@@ -56,6 +56,7 @@ function commentsCol(memorialId, photoIndex){
 function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
 }
+
 // ✅ Velas globales (a nivel memorial)
 function candlesCol(memorialId){
   return collection(db, "memorials", memorialId, "candles");
@@ -87,17 +88,12 @@ async function initAuthPersistence(){
 /* ---------------- Login (POPUP + fallback REDIRECT) ---------------- */
 async function loginGoogle(){
   showAuthError("");
-
-  // asegura persistencia ANTES del login
   await initAuthPersistence();
 
   try{
-    // ✅ ideal en PC
     await signInWithPopup(auth, provider);
   }catch(err){
     const code = err?.code || "";
-
-    // En móvil / navegadores embebidos el popup falla → redirect
     if (
       code === "auth/popup-blocked" ||
       code === "auth/popup-closed-by-user" ||
@@ -106,8 +102,6 @@ async function loginGoogle(){
       await signInWithRedirect(auth, provider);
       return;
     }
-
-    // Errores reales
     showAuthError(`No se pudo iniciar sesión. Error: ${code || "desconocido"}`);
     throw err;
   }
@@ -126,20 +120,15 @@ function setupGlobalAuthUI(){
 
   if (btnLoginMain){
     btnLoginMain.addEventListener("click", async () => {
-      try{
-        await loginGoogle();
-      }catch(e){}
+      try{ await loginGoogle(); } catch(e){}
     });
   }
 
   if (btnLogoutMain){
     btnLogoutMain.addEventListener("click", async () => {
       showAuthError("");
-      try{
-        await signOut(auth);
-      }catch(err){
-        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
-      }
+      try{ await signOut(auth); }
+      catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
     });
   }
 
@@ -149,72 +138,73 @@ function setupGlobalAuthUI(){
     }
     if (btnLoginMain) btnLoginMain.hidden = !!user;
     if (btnLogoutMain) btnLogoutMain.hidden = !user;
-
     if (user) showAuthError("");
   });
 }
 
-/* ---------------- Main ---------------- */
-async function loadMemorial(){
-  await initAuthPersistence();
-  setupGlobalAuthUI();
+/* ---------------- Efecto vela bonito ---------------- */
+function candleBurst(){
+  const host = document.getElementById("extraBlocks") || document.body;
+  const n = 18;
+  for (let i = 0; i < n; i++){
+    const p = document.createElement("div");
+    p.className = "cSpark";
+    p.style.left = (50 + (Math.random()*20 - 10)) + "%";
+    p.style.top = (Math.random()*6 + 2) + "px";
+    p.style.setProperty("--dx", (Math.random()*220 - 110) + "px");
+    p.style.setProperty("--dy", (Math.random()*-160 - 40) + "px");
+    p.style.setProperty("--d", (700 + Math.random()*500) + "ms");
+    host.appendChild(p);
+    setTimeout(() => p.remove(), 1400);
+  }
+}
 
-  // Completa el redirect si venías de redirect login
-  try{
-    await getRedirectResult(auth);
-  }catch(err){
-    const code = err?.code || "";
-    if (code && code !== "auth/no-auth-event"){
-      showAuthError(`No se pudo completar el inicio de sesión. Error: ${code}`);
+/* ---------------- Velas globales ---------------- */
+function setupGlobalCandles(memorialId){
+  const btn = document.getElementById("candleBtn");
+  const out = document.getElementById("candleCount");
+  if (!btn || !out) return;
+
+  // Total velas realtime
+  onSnapshot(candlesCol(memorialId), (snap) => {
+    out.textContent = `🕯️ ${snap.size} velas encendidas`;
+  });
+
+  let unsubUserDoc = null;
+
+  onAuthStateChanged(auth, (user) => {
+    if (unsubUserDoc) { unsubUserDoc(); unsubUserDoc = null; }
+
+    if (!user){
+      btn.disabled = true;
+      btn.textContent = "Inicia sesión para encender una vela";
+      btn.onclick = null;
+      return;
     }
-  }
 
-  const res = await fetch("data.json", { cache: "no-store" });
-  if (!res.ok) throw new Error("No se pudo cargar data.json");
-  const d = await res.json();
+    btn.disabled = false;
 
-  document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
+    const ref = candleDoc(memorialId, user.uid);
 
-  // Básicos
-  const cover = document.getElementById("cover");
-  cover.src = d.cover || "";
-  cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
+    // Escuchar si el usuario ya encendió (realtime)
+    unsubUserDoc = onSnapshot(ref, (snap) => {
+      btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
+    });
 
-  document.getElementById("name").textContent = d.name || "";
-  document.getElementById("dates").textContent = d.dates || "";
-  document.getElementById("bio").textContent = d.bio || "";
-
-  // Bloques emocionales
-  injectEmotionalBlocks(d);
-
-  // Galería
-  const items = Array.isArray(d.gallery) ? d.gallery : [];
-  const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
-  const g = document.getElementById("gallery");
-
-  g.innerHTML = gallery.map((it, i) => `
-    <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-      <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
-      ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
-    </button>
-  `).join("");
-
-  // Video
-  if (d.video?.youtubeEmbedUrl){
-    document.getElementById("videoSection").hidden = false;
-    const vf = document.getElementById("videoFrame");
-    vf.src = d.video.youtubeEmbedUrl;
-    vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
-  }
-
-  // Audio
-  if (d.audio?.src){
-    document.getElementById("audioSection").hidden = false;
-    document.getElementById("audioPlayer").src = d.audio.src;
-  }
-
-  setupLightboxFirebase(d, gallery);
-  setupGlobalCandles(getMemorialId());
+    btn.onclick = async () => {
+      const snap = await getDoc(ref);
+      if (snap.exists()){
+        await deleteDoc(ref);
+      } else {
+        await setDoc(ref, {
+          uid: user.uid,
+          name: user.displayName || "Usuario",
+          createdAt: serverTimestamp()
+        });
+      }
+      candleBurst();
+    };
+  });
 }
 
 /* ---------------- Emotional blocks ---------------- */
@@ -226,69 +216,7 @@ function injectEmotionalBlocks(d){
     const bio = document.getElementById("bio");
     bio.parentNode.insertBefore(host, bio.nextSibling);
   }
-function setupGlobalCandles(memorialId){
-  const btn = document.getElementById("candleBtn");
-  const out = document.getElementById("candleCount");
-  if (!btn || !out) return;
 
-  // Escucha TOTAL de velas (realtime)
-  onSnapshot(candlesCol(memorialId), (snap) => {
-    out.textContent = `🕯️ ${snap.size} velas encendidas`;
-  });
-
-  // Estado por usuario (toggle)
-  onAuthStateChanged(auth, async (user) => {
-    if (!user){
-      btn.disabled = true;
-      btn.textContent = "Inicia sesión para encender una vela";
-      return;
-    }
-
-    btn.disabled = false;
-
-    const ref = candleDoc(memorialId, user.uid);
-    const snap = await getDoc(ref);
-
-    // Texto según estado
-    btn.textContent = snap.exists()
-      ? "🕯️ Apagar vela"
-      : "🕯️ Encender vela";
-
-    // Toggle
-    btn.onclick = async () => {
-      const again = await getDoc(ref);
-      if (again.exists()){
-        await deleteDoc(ref);
-        candleBurst(); // efecto bonito
-      } else {
-        await setDoc(ref, {
-          uid: user.uid,
-          name: user.displayName || "Usuario",
-          createdAt: serverTimestamp()
-        });
-        candleBurst(); // efecto bonito
-      }
-    };
-  });
-}
-  function candleBurst(){
-  // Efecto simple: partículas doradas
-  const n = 18;
-  for (let i = 0; i < n; i++){
-    const p = document.createElement("div");
-    p.className = "cSpark";
-    p.style.left = (50 + (Math.random()*20 - 10)) + "%";
-    p.style.top = (Math.random()*6 + 2) + "px";
-    p.style.setProperty("--dx", (Math.random()*220 - 110) + "px");
-    p.style.setProperty("--dy", (Math.random()*-160 - 40) + "px");
-    p.style.setProperty("--d", (700 + Math.random()*500) + "ms");
-
-    const host = document.getElementById("extraBlocks") || document.body;
-    host.appendChild(p);
-
-    setTimeout(() => p.remove(), 1400);
-  }
-}
   const hero = d.hero || {};
   const quotes = Array.isArray(d.quotes) ? d.quotes : [];
   const sections = Array.isArray(d.sections) ? d.sections : [];
@@ -344,18 +272,6 @@ function setupGlobalCandles(memorialId){
   }).join("");
 
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
-
-  // Vela local
-  if (btn && out){
-    const key = "candles_" + (d.name || "memorial");
-    const current = Number(localStorage.getItem(key) || "0");
-    out.textContent = `Velas encendidas en este dispositivo: ${current}`;
-    btn.addEventListener("click", () => {
-      const next = Number(localStorage.getItem(key) || "0") + 1;
-      localStorage.setItem(key, String(next));
-      out.textContent = `Velas encendidas en este dispositivo: ${next}`;
-    });
-  }
 }
 
 /* ---------------- Lightbox + Firebase comments/reactions ---------------- */
@@ -503,18 +419,13 @@ function setupLightboxFirebase(d, gallery){
   });
 
   btnLogin.addEventListener("click", async () => {
-    try{
-      await loginGoogle();
-    }catch(e){}
+    try{ await loginGoogle(); } catch(e){}
   });
 
   btnLogout.addEventListener("click", async () => {
     showAuthError("");
-    try{
-      await signOut(auth);
-    }catch(err){
-      showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
-    }
+    try{ await signOut(auth); }
+    catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
   btnComment.addEventListener("click", async () => {
@@ -555,6 +466,62 @@ function setupLightboxFirebase(d, gallery){
     });
   });
 }
+
+/* ---------------- Main ---------------- */
+async function loadMemorial(){
+  await initAuthPersistence();
+  setupGlobalAuthUI();
+
+  // si venías de redirect
+  try{ await getRedirectResult(auth); } catch(e){}
+
+  const res = await fetch("data.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("No se pudo cargar data.json");
+  const d = await res.json();
+
+  document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
+
+  const cover = document.getElementById("cover");
+  cover.src = d.cover || "";
+  cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
+
+  document.getElementById("name").textContent = d.name || "";
+  document.getElementById("dates").textContent = d.dates || "";
+  document.getElementById("bio").textContent = d.bio || "";
+
+  injectEmotionalBlocks(d);
+
+  const items = Array.isArray(d.gallery) ? d.gallery : [];
+  const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
+  const g = document.getElementById("gallery");
+
+  g.innerHTML = gallery.map((it, i) => `
+    <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
+      <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+      ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+    </button>
+  `).join("");
+
+  if (d.video?.youtubeEmbedUrl){
+    document.getElementById("videoSection").hidden = false;
+    const vf = document.getElementById("videoFrame");
+    vf.src = d.video.youtubeEmbedUrl;
+    vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+  }
+
+  if (d.audio?.src){
+    document.getElementById("audioSection").hidden = false;
+    document.getElementById("audioPlayer").src = d.audio.src;
+  }
+
+  setupLightboxFirebase(d, gallery);
+
+  // ✅ después de inyectar el HTML (porque recién ahí existe #candleBtn)
+  setupGlobalCandles(getMemorialId());
+}
+
+loadMemorial().catch(console.error);
+
 
 loadMemorial().catch(console.error);
 
