@@ -14,6 +14,7 @@
 </head>
 
 <body>
+
   <!-- Barra superior -->
   <header class="mTop">
     <div class="mWrap">
@@ -24,33 +25,40 @@
 
   <!-- Contenido -->
   <main class="mWrap">
+
     <!-- Portada -->
     <img id="cover" class="mCover" alt="">
 
-    <!-- Datos -->
+    <!-- Datos principales -->
     <h1 id="name" class="mName"></h1>
     <p id="dates" class="mDates"></p>
     <p id="bio" class="mBio"></p>
-<!-- Login global -->
-<section class="mSection" id="authBar">
-  <h2>Deja tu recuerdo</h2>
-  <p class="meta">Para comentar y reaccionar en las fotos, inicia sesión con Google.</p>
 
-  <div class="authRow">
-    <div id="authStatus" class="authStatus">Invitado</div>
+    <!-- Login GLOBAL -->
+    <section class="mSection">
+      <h2>Deja tu recuerdo</h2>
+      <p class="meta">
+        Para comentar y reaccionar en las fotografías, inicia sesión con Google.
+      </p>
 
-    <button id="btnLoginMain" class="gBtn" type="button">
-      <span class="gIcon" aria-hidden="true"></span>
-      <span>Continuar con Google</span>
-    </button>
+      <div class="authRow">
+        <div id="authStatus" class="authStatus">Invitado</div>
 
-    <button id="btnLogoutMain" class="gBtn ghost" type="button" hidden>
-      Cerrar sesión
-    </button>
-  </div>
+        <button id="btnLoginMain" class="gBtn" type="button">
+          <span class="gIcon"></span>
+          <span>Continuar con Google</span>
+        </button>
 
-  <div id="authError" class="authError" hidden></div>
-</section>
+        <button id="btnLogoutMain" class="gBtn ghost" type="button" hidden>
+          Cerrar sesión
+        </button>
+      </div>
+
+      <p id="authError" class="meta" style="color:#e07a7a; margin-top:8px;" hidden></p>
+    </section>
+
+    <!-- Contenido emocional dinámico -->
+    <div id="extraBlocks"></div>
 
     <!-- Galería -->
     <section class="mSection">
@@ -75,43 +83,86 @@
       <h2>Audio</h2>
       <audio id="audioPlayer" controls style="width:100%"></audio>
     </section>
+
   </main>
 
-  <!-- LIGHTBOX (OBLIGATORIO para que funcione) -->
- <div id="lightbox" class="lb" hidden>
-  <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
+  <!-- ===================== -->
+  <!-- LIGHTBOX PRO -->
+  <!-- ===================== -->
+  <div id="lightbox" class="lb" hidden>
 
-  <div class="lb__wrap">
-    <img id="lbImg" class="lb__img" alt="">
+    <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
-    <aside class="lb__panel">
-      <div class="lb__auth">
-        <div id="userInfo" class="lb__user">Invitado</div>
-        <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión con Google</button>
-        <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
-      </div>
+    <div class="lb__wrap">
 
-      <div class="lb__reactions">
-        <button class="rBtn" data-r="❤️" type="button" disabled>❤️ <span id="t_heart">0</span></button>
-        <button class="rBtn" data-r="🙏" type="button" disabled>🙏 <span id="t_pray">0</span></button>
-        <button class="rBtn" data-r="🕯️" type="button" disabled>🕯️ <span id="t_candle">0</span></button>
-        <button class="rBtn" data-r="🌟" type="button" disabled>🌟 <span id="t_star">0</span></button>
-        <button class="rBtn" data-r="😢" type="button" disabled>😢 <span id="t_sad">0</span></button>
-      </div>
+      <!-- Imagen -->
+      <img id="lbImg" class="lb__img" alt="">
 
-      <div class="lb__commentBox">
-        <textarea id="commentText" class="lb__text" placeholder="Deja un recuerdo sobre esta foto..." maxlength="500" disabled></textarea>
-        <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar comentario</button>
-        <div id="commentHint" class="lb__hint">Para comentar y reaccionar debes iniciar sesión.</div>
-      </div>
+      <!-- Panel lateral -->
+      <aside class="lb__panel">
 
-      <div id="commentsList" class="lb__comments"></div>
-    </aside>
+        <!-- Auth dentro del lightbox -->
+        <div class="lb__auth">
+          <div id="userInfo" class="lb__user">Invitado</div>
+
+          <button id="btnLogin" class="lb__btn" type="button">
+            Iniciar sesión con Google
+          </button>
+
+          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>
+            Cerrar sesión
+          </button>
+        </div>
+
+        <!-- Reacciones -->
+        <div class="lb__reactions">
+          <button class="rBtn" data-r="❤️" type="button" disabled>
+            ❤️ <span id="t_heart">0</span>
+          </button>
+          <button class="rBtn" data-r="🙏" type="button" disabled>
+            🙏 <span id="t_pray">0</span>
+          </button>
+          <button class="rBtn" data-r="🕯️" type="button" disabled>
+            🕯️ <span id="t_candle">0</span>
+          </button>
+          <button class="rBtn" data-r="🌟" type="button" disabled>
+            🌟 <span id="t_star">0</span>
+          </button>
+          <button class="rBtn" data-r="😢" type="button" disabled>
+            😢 <span id="t_sad">0</span>
+          </button>
+        </div>
+
+        <!-- Comentarios -->
+        <div class="lb__commentBox">
+          <textarea
+            id="commentText"
+            class="lb__text"
+            placeholder="Deja un recuerdo sobre esta fotografía…"
+            maxlength="500"
+            disabled></textarea>
+
+          <button
+            id="btnComment"
+            class="lb__btn primary"
+            type="button"
+            disabled>
+            Publicar comentario
+          </button>
+
+          <div id="commentHint" class="lb__hint">
+            Para comentar y reaccionar debes iniciar sesión.
+          </div>
+        </div>
+
+        <div id="commentsList" class="lb__comments"></div>
+
+      </aside>
+    </div>
   </div>
-</div>
-
 
   <!-- JS memorial -->
-<script type="module" src="../../assets/js/memorial-page.js"></script>
+  <script type="module" src="../../assets/js/memorial-page.js"></script>
+
 </body>
 </html>
