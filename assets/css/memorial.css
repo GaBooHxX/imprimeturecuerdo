@@ -254,12 +254,7 @@ a{color:inherit;text-decoration:none}
 }
 .cMeta{color:rgba(238,241,247,.70); font-size:12px; margin-top:6px}
 
-.authRow{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:wrap;
-}
+.authRow{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
 .authStatus{
   color:rgba(238,241,247,.85);
   font-size:13px;
@@ -268,11 +263,18 @@ a{color:inherit;text-decoration:none}
   border-radius:14px;
   background:rgba(255,255,255,.03);
 }
+.authError{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,80,80,.30);
+  background:rgba(255,80,80,.10);
+  color:rgba(255,220,220,.95);
+  font-size:13px;
+}
 
 .gBtn{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
+  display:inline-flex; align-items:center; gap:10px;
   border:1px solid rgba(255,255,255,.14);
   background:rgba(255,255,255,.07);
   color:rgba(238,241,247,.94);
@@ -286,20 +288,12 @@ a{color:inherit;text-decoration:none}
 .gBtn.ghost{background:transparent}
 
 .gIcon{
-  width:18px;
-  height:18px;
-  border-radius:4px;
-  background:#fff;
-  position:relative;
-  flex:0 0 18px;
+  width:18px; height:18px; border-radius:4px;
+  background:#fff; position:relative; flex:0 0 18px;
 }
 .gIcon::after{
-  content:"G";
-  position:absolute;
-  inset:0;
-  display:grid;
-  place-items:center;
-  font-weight:900;
-  color:#1a73e8;
-  font-size:12px;
+  content:"G"; position:absolute; inset:0;
+  display:grid; place-items:center;
+  font-weight:900; color:#1a73e8; font-size:12px;
 }
+
