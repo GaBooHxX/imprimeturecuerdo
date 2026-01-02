@@ -40,7 +40,6 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
-  // Usa la carpeta como ID: /memoriales/Camilo-Fuentes-Covarrubias/
   const parts = location.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("memoriales");
   return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
@@ -56,10 +55,31 @@ function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
 }
 
+function showAuthError(msg){
+  const box = document.getElementById("authError");
+  if (!box) return;
+  if (!msg){
+    box.hidden = true;
+    box.textContent = "";
+    return;
+  }
+  box.hidden = false;
+  box.textContent = msg;
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
-  // Completa el login si venía de redirect
-  await getRedirectResult(auth).catch(() => {});
+  // Completa el login si venía de redirect y muestra error si falla
+  try{
+    await getRedirectResult(auth);
+  }catch(err){
+    const code = err?.code || "";
+    if (code === "auth/unauthorized-domain"){
+      showAuthError("Firebase bloqueó el inicio de sesión: dominio NO autorizado. Debes agregar TUUSUARIO.github.io en Authentication → Settings → Authorized domains.");
+    } else {
+      showAuthError(`No se pudo iniciar sesión. Error: ${code || "desconocido"}`);
+    }
+  }
 
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
@@ -105,11 +125,53 @@ async function loadMemorial(){
     document.getElementById("audioPlayer").src = d.audio.src;
   }
 
-  // Lightbox + Firebase features
+  // Habilitar login global (index) + Lightbox
+  setupGlobalAuthUI();
   setupLightboxFirebase(d, gallery);
 }
 
-/* ---------------- Emotional blocks (mantiene tu versión) ---------------- */
+/* ---------------- Login global en la página ---------------- */
+function setupGlobalAuthUI(){
+  const btnLoginMain = document.getElementById("btnLoginMain");
+  const btnLogoutMain = document.getElementById("btnLogoutMain");
+  const authStatus = document.getElementById("authStatus");
+
+  if (btnLoginMain){
+    btnLoginMain.addEventListener("click", async () => {
+      showAuthError("");
+      try{
+        await signInWithRedirect(auth, provider);
+      }catch(err){
+        showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
+      }
+    });
+  }
+
+  if (btnLogoutMain){
+    btnLogoutMain.addEventListener("click", async () => {
+      showAuthError("");
+      try{
+        await signOut(auth);
+      }catch(err){
+        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
+      }
+    });
+  }
+
+  // Mantener estado
+  onAuthStateChanged(auth, (user) => {
+    if (authStatus){
+      authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
+    }
+    if (btnLoginMain) btnLoginMain.hidden = !!user;
+    if (btnLogoutMain) btnLogoutMain.hidden = !user;
+
+    // Si está logueado, limpamos mensajes de error
+    if (user) showAuthError("");
+  });
+}
+
+/* ---------------- Emotional blocks (tu versión) ---------------- */
 function injectEmotionalBlocks(d){
   let host = document.getElementById("extraBlocks");
   if (!host){
@@ -194,12 +256,10 @@ function injectEmotionalBlocks(d){
 function setupLightboxFirebase(d, gallery){
   const memorialId = getMemorialId();
 
-  // Lightbox elements
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
 
-  // Panel elements (deben existir en el HTML del lightbox PRO)
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
   const userInfo = document.getElementById("userInfo");
@@ -217,7 +277,6 @@ function setupLightboxFirebase(d, gallery){
     "😢": document.getElementById("t_sad")
   };
 
-  // Si no existe el panel, avisamos en consola
   if (!btnLogin || !commentText || !commentsList){
     console.error("Falta el lightbox PRO en index.html (panel de login/comentarios/reacciones).");
     return;
@@ -259,17 +318,14 @@ function setupLightboxFirebase(d, gallery){
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
-    // cortar listeners previos
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    // crear doc base (merge)
     await setDoc(photoDoc(memorialId, i), {
       memorialName: d.name || "",
       updatedAt: serverTimestamp()
     }, { merge: true });
 
-    // COMMENTS realtime
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
@@ -291,7 +347,6 @@ function setupLightboxFirebase(d, gallery){
       }
     );
 
-    // REACTIONS realtime (suma por usuario)
     unsubReactions = onSnapshot(reactionsCol(memorialId, i), (snap) => {
       const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
       snap.forEach(docu => {
@@ -306,6 +361,9 @@ function setupLightboxFirebase(d, gallery){
       totals["🌟"].textContent = String(sum["🌟"]);
       totals["😢"].textContent = String(sum["😢"]);
     });
+
+    // Importante: enganchar auth aquí también (por si el usuario inicia sesión en el lightbox)
+    onAuthStateChanged(auth, (user) => setAuthUI(user));
   }
 
   function closeLb(){
@@ -318,43 +376,37 @@ function setupLightboxFirebase(d, gallery){
     unsubReactions = null;
   }
 
-  // abrir al tocar foto
   document.getElementById("gallery").addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
-  // cerrar (X)
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     closeLb();
   });
 
-  // cerrar clic fuera (fondo)
   lb.addEventListener("click", (e) => {
     if (e.target === lb) closeLb();
   });
 
-  // ESC
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
   });
 
-  // Login/logout
   btnLogin.addEventListener("click", async () => {
+    showAuthError("");
     await signInWithRedirect(auth, provider);
   });
 
   btnLogout.addEventListener("click", async () => {
+    showAuthError("");
     await signOut(auth);
   });
 
-  onAuthStateChanged(auth, (user) => setAuthUI(user));
-
-  // Publicar comentario
   btnComment.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -372,24 +424,18 @@ function setupLightboxFirebase(d, gallery){
     commentText.value = "";
   });
 
-  // Reacciones toggle por usuario (1 doc por usuario)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
       if (!user) return;
 
       const emo = btn.dataset.r;
-
       const ref = doc(reactionsCol(memorialId, current), user.uid);
       const snap = await getDoc(ref);
       const data = snap.exists() ? snap.data() : {};
-
       const next = (Number(data[emo] || 0) === 1) ? 0 : 1;
 
-      await setDoc(ref, {
-        [emo]: next,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
     });
   });
 }
