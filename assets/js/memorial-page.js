@@ -43,7 +43,6 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
-  // Usa la carpeta como ID: /memoriales/Camilo-Fuentes/
   const parts = location.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("memoriales");
   return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
@@ -72,7 +71,36 @@ async function initAuthPersistence(){
   try{
     await setPersistence(auth, browserLocalPersistence);
   }catch(e){
-    console.warn("No se pudo setear persistencia local:", e?.code || e);
+    console.warn("Persistencia NO aplicada:", e?.code || e);
+  }
+}
+
+/* ---------------- Login (POPUP + fallback REDIRECT) ---------------- */
+async function loginGoogle(){
+  showAuthError("");
+
+  // asegura persistencia ANTES del login
+  await initAuthPersistence();
+
+  try{
+    // ✅ ideal en PC
+    await signInWithPopup(auth, provider);
+  }catch(err){
+    const code = err?.code || "";
+
+    // En móvil / navegadores embebidos el popup falla → redirect
+    if (
+      code === "auth/popup-blocked" ||
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/operation-not-supported-in-this-environment"
+    ){
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+
+    // Errores reales
+    showAuthError(`No se pudo iniciar sesión. Error: ${code || "desconocido"}`);
+    throw err;
   }
 }
 
@@ -80,7 +108,7 @@ async function initAuthPersistence(){
 let globalAuthReady = false;
 
 function setupGlobalAuthUI(){
-  if (globalAuthReady) return; // <- evita doble registro
+  if (globalAuthReady) return;
   globalAuthReady = true;
 
   const btnLoginMain = document.getElementById("btnLoginMain");
@@ -89,12 +117,9 @@ function setupGlobalAuthUI(){
 
   if (btnLoginMain){
     btnLoginMain.addEventListener("click", async () => {
-      showAuthError("");
       try{
-        await signInWithRedirect(auth, provider);
-      }catch(err){
-        showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
-      }
+        await loginGoogle();
+      }catch(e){}
     });
   }
 
@@ -115,6 +140,7 @@ function setupGlobalAuthUI(){
     }
     if (btnLoginMain) btnLoginMain.hidden = !!user;
     if (btnLogoutMain) btnLogoutMain.hidden = !user;
+
     if (user) showAuthError("");
   });
 }
@@ -124,7 +150,7 @@ async function loadMemorial(){
   await initAuthPersistence();
   setupGlobalAuthUI();
 
-  // Completa el login si venía de redirect
+  // Completa el redirect si venías de redirect login
   try{
     await getRedirectResult(auth);
   }catch(err){
@@ -149,7 +175,7 @@ async function loadMemorial(){
   document.getElementById("dates").textContent = d.dates || "";
   document.getElementById("bio").textContent = d.bio || "";
 
-  // Secciones emocionales
+  // Bloques emocionales
   injectEmotionalBlocks(d);
 
   // Galería
@@ -181,7 +207,7 @@ async function loadMemorial(){
   setupLightboxFirebase(d, gallery);
 }
 
-/* ---------------- Emotional blocks (tu versión) ---------------- */
+/* ---------------- Emotional blocks ---------------- */
 function injectEmotionalBlocks(d){
   let host = document.getElementById("extraBlocks");
   if (!host){
@@ -320,7 +346,6 @@ function setupLightboxFirebase(d, gallery){
     }
   }
 
-  // Listener único para que el lightbox se actualice incluso si cambias sesión
   onAuthStateChanged(auth, (user) => setAuthUI(user));
 
   async function openLb(i){
@@ -331,13 +356,11 @@ function setupLightboxFirebase(d, gallery){
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
-    // Asegura UI correcta al abrir (por si el listener aún no disparó)
     setAuthUI(auth.currentUser);
 
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    // COMMENTS realtime
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
@@ -356,13 +379,9 @@ function setupLightboxFirebase(d, gallery){
             </div>
           `;
         }).join("");
-      },
-      (err) => {
-        console.error("Error leyendo comentarios:", err);
       }
     );
 
-    // REACTIONS realtime
     unsubReactions = onSnapshot(
       reactionsCol(memorialId, i),
       (snap) => {
@@ -378,9 +397,6 @@ function setupLightboxFirebase(d, gallery){
         totals["🕯️"].textContent = String(sum["🕯️"]);
         totals["🌟"].textContent = String(sum["🌟"]);
         totals["😢"].textContent = String(sum["😢"]);
-      },
-      (err) => {
-        console.error("Error leyendo reacciones:", err);
       }
     );
   }
@@ -395,35 +411,31 @@ function setupLightboxFirebase(d, gallery){
     unsubReactions = null;
   }
 
-  // Abrir al tocar foto
   document.getElementById("gallery").addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
-  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     closeLb();
   });
+
   lb.addEventListener("click", (e) => {
     if (e.target === lb) closeLb();
   });
+
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
   });
 
-  // Login/logout dentro del lightbox
   btnLogin.addEventListener("click", async () => {
-    showAuthError("");
     try{
-      await signInWithRedirect(auth, provider);
-    }catch(err){
-      showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
-    }
+      await loginGoogle();
+    }catch(e){}
   });
 
   btnLogout.addEventListener("click", async () => {
@@ -435,7 +447,6 @@ function setupLightboxFirebase(d, gallery){
     }
   });
 
-  // Publicar comentario
   btnComment.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
@@ -446,21 +457,16 @@ function setupLightboxFirebase(d, gallery){
     const text = (commentText.value || "").trim();
     if (!text) return;
 
-    try{
-      await addDoc(commentsCol(memorialId, current), {
-        uid: user.uid,
-        name: user.displayName || "Usuario",
-        text: text.slice(0, 500),
-        createdAt: serverTimestamp()
-      });
-      commentText.value = "";
-    }catch(err){
-      showAuthError(`No se pudo guardar el comentario. Error: ${err?.code || "desconocido"}`);
-      console.error(err);
-    }
+    await addDoc(commentsCol(memorialId, current), {
+      uid: user.uid,
+      name: user.displayName || "Usuario",
+      text: text.slice(0, 500),
+      createdAt: serverTimestamp()
+    });
+
+    commentText.value = "";
   });
 
-  // Reacciones toggle por usuario (1 doc por usuario)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -475,17 +481,10 @@ function setupLightboxFirebase(d, gallery){
       const data = snap.exists() ? snap.data() : {};
       const next = (Number(data[emo] || 0) === 1) ? 0 : 1;
 
-      try{
-        await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
-      }catch(err){
-        showAuthError(`No sugerar reacción. Error: ${err?.code || "desconocido"}`);
-        console.error(err);
-      }
+      await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
     });
   });
 }
-
-loadMemorial().catch(console.error);
 
 loadMemorial().catch(console.error);
 
