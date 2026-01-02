@@ -368,9 +368,6 @@ function setupLightboxFirebase(d, gallery){
       totals["🌟"].textContent = String(sum["🌟"]);
       totals["😢"].textContent = String(sum["😢"]);
     });
-
-    // Importante: enganchar auth aquí también (por si el usuario inicia sesión en el lightbox)
-    onAuthStateChanged(auth, (user) => setAuthUI(user));
   }
 
   function closeLb(){
