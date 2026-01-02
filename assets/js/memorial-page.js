@@ -77,11 +77,16 @@ const adminDoc = (uid) => doc(db, "admins", uid);
 const roleDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "roles", uid);
 const blockedDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "blocked", uid);
 
+const reportsCol = (memorialId) => collection(db, "memorials", memorialId, "reports");
+
 const candlesCol = (memorialId) => collection(db, "memorials", memorialId, "candles");
 const candleDoc = (memorialId, uid) => doc(db, "memorials", memorialId, "candles", uid);
 
 const commentsCol = (memorialId, photoIndex) =>
   collection(db, "memorials", memorialId, "photos", String(photoIndex), "comments");
+
+const commentDoc = (memorialId, photoIndex, commentId) =>
+  doc(db, "memorials", memorialId, "photos", String(photoIndex), "comments", commentId);
 
 const reactionsCol = (memorialId, photoIndex) =>
   collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
@@ -95,7 +100,6 @@ async function loginGoogle(){
     await signInWithPopup(auth, provider);
   }catch(err){
     const code = err?.code || "";
-    // fallback móvil / bloqueos popup
     if (
       code === "auth/popup-blocked" ||
       code === "auth/popup-closed-by-user" ||
@@ -109,9 +113,9 @@ async function loginGoogle(){
   }
 }
 
-/* ---------------- Roles (admin / moderator) + bloqueo ---------------- */
+/* ---------------- Roles + bloqueo ---------------- */
 async function getPrivileges(memorialId, user){
-  if (!user) return { isAdmin:false, isModerator:false, isBlocked:false };
+  if (!user) return { isAdmin:false, isModerator:false, isBlocked:false, role:"" };
 
   const [a, r, b] = await Promise.all([
     getDoc(adminDoc(user.uid)),
@@ -137,6 +141,10 @@ function setupGlobalAuthUI(){
   const btnLogoutMain = document.getElementById("btnLogoutMain");
   const authStatus = document.getElementById("authStatus");
 
+  const uidRow = document.getElementById("uidRow");
+  const myUid = document.getElementById("myUid");
+  const copyUid = document.getElementById("copyUid");
+
   btnLoginMain?.addEventListener("click", async () => {
     try { await loginGoogle(); } catch(e){}
   });
@@ -148,17 +156,36 @@ function setupGlobalAuthUI(){
     }
   });
 
+  copyUid?.addEventListener("click", async () => {
+    const txt = myUid?.textContent || "";
+    if (!txt) return;
+    try{
+      await navigator.clipboard.writeText(txt);
+      showAuthError("UID copiado al portapapeles.");
+      setTimeout(() => showAuthError(""), 1400);
+    }catch{
+      showAuthError("No se pudo copiar. Copia manualmente el UID.");
+    }
+  });
+
   onAuthStateChanged(auth, async (user) => {
     authStatus && (authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado");
     btnLoginMain && (btnLoginMain.hidden = !!user);
     btnLogoutMain && (btnLogoutMain.hidden = !user);
+
+    if (uidRow){
+      uidRow.hidden = !user;
+    }
+    if (myUid){
+      myUid.textContent = user ? user.uid : "";
+    }
+
     if (user) showAuthError("");
   });
 }
 
 /* ---------------- Emotional blocks + velas globales ---------------- */
 function injectEmotionalBlocks(d){
-  // NO uses el div extraBlocks del HTML para inyectar otra vez: ya existe
   const host = document.getElementById("extraBlocks");
   if (!host) return;
 
@@ -221,7 +248,6 @@ function injectEmotionalBlocks(d){
 }
 
 function candleBurst(){
-  // partículas doradas (usa tu CSS .cSpark)
   const btn = document.getElementById("candleBtn");
   if (!btn) return;
 
@@ -250,7 +276,6 @@ function setupGlobalCandles(memorialId){
   const hint = document.getElementById("candleHint");
   if (!btn || !out) return;
 
-  // contador total
   onSnapshot(candlesCol(memorialId), (snap) => {
     out.textContent = `🕯️ ${snap.size} velas encendidas`;
   });
@@ -296,27 +321,252 @@ function setupGlobalCandles(memorialId){
   });
 }
 
-/* ---------------- Lightbox + comentarios + reacciones + moderación ---------------- */
+/* ---------------- Panel Moderación ---------------- */
+function setupModeratorPanel(memorialId){
+  const panel = document.getElementById("modPanel");
+  const roleText = document.getElementById("modRoleText");
+  const reportsList = document.getElementById("reportsList");
+  const blockedList = document.getElementById("blockedList");
+
+  const promoteUid = document.getElementById("promoteUid");
+  const btnMakeMod = document.getElementById("btnMakeMod");
+  const btnRemoveMod = document.getElementById("btnRemoveMod");
+  const promoteMsg = document.getElementById("promoteMsg");
+
+  let priv = { isAdmin:false, isModerator:false, isBlocked:false, role:"" };
+
+  function setMsg(t){
+    if (!promoteMsg) return;
+    promoteMsg.textContent = t || "";
+  }
+
+  async function refreshPriv(){
+    priv = await getPrivileges(memorialId, auth.currentUser);
+    if (panel) panel.hidden = !priv.isModerator;
+    if (roleText){
+      const who = priv.isAdmin ? "Admin global" : (priv.role ? `Rol: ${priv.role}` : "Moderador");
+      roleText.textContent = `Acceso: ${who}`;
+    }
+  }
+
+  // Promover por UID
+  btnMakeMod?.addEventListener("click", async () => {
+    setMsg("");
+    await refreshPriv();
+    if (!priv.isModerator){
+      setMsg("Sin permisos.");
+      return;
+    }
+    const uid = (promoteUid?.value || "").trim();
+    if (!uid){ setMsg("Pega un UID válido."); return; }
+
+    await setDoc(roleDoc(memorialId, uid), {
+      role: "moderator",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    setMsg("Listo: ahora ese usuario es moderador.");
+  });
+
+  btnRemoveMod?.addEventListener("click", async () => {
+    setMsg("");
+    await refreshPriv();
+    if (!priv.isModerator){
+      setMsg("Sin permisos.");
+      return;
+    }
+    const uid = (promoteUid?.value || "").trim();
+    if (!uid){ setMsg("Pega un UID válido."); return; }
+
+    await deleteDoc(roleDoc(memorialId, uid));
+    setMsg("Listo: moderación removida.");
+  });
+
+  // Reportes realtime
+  onSnapshot(query(reportsCol(memorialId), orderBy("createdAt", "desc")), async (snap) => {
+    await refreshPriv();
+    if (!priv.isModerator){
+      if (reportsList) reportsList.innerHTML = "";
+      return;
+    }
+
+    if (!reportsList) return;
+
+    if (snap.empty){
+      reportsList.innerHTML = `<div class="lb__hint">No hay reportes.</div>`;
+      return;
+    }
+
+    reportsList.innerHTML = snap.docs.map(d => {
+      const r = d.data() || {};
+      const status = r.status || "open";
+      const ts = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : "";
+
+      const actionBtns = `
+        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+          <button class="lb__btn ghost jsResolve" data-id="${d.id}" data-mode="resolved" type="button">Resolver</button>
+          <button class="lb__btn ghost jsResolve" data-id="${d.id}" data-mode="dismissed" type="button">Descartar</button>
+          <button class="lb__btn ghost jsHideFromReport" data-id="${d.id}" data-photo="${r.photoIndex}" data-cid="${escapeHtml(r.commentId)}" type="button">Ocultar comentario</button>
+          <button class="lb__btn ghost jsBlockFromReport" data-id="${d.id}" data-uid="${escapeHtml(r.commentAuthorUid)}" data-name="${escapeHtml(r.commentAuthorName || "")}" type="button">Bloquear autor</button>
+          <button class="lb__btn ghost jsMakeModFromReport" data-uid="${escapeHtml(r.commentAuthorUid)}" type="button">Hacer moderador</button>
+        </div>
+      `;
+
+      return `
+        <div class="cItem" style="opacity:${status === 'open' ? '1' : '.75'}">
+          <div><strong>Estado:</strong> ${escapeHtml(status)}</div>
+          <div class="cMeta">${escapeHtml(ts)}</div>
+          <div style="margin-top:8px"><strong>Motivo:</strong> ${escapeHtml(r.reason || "")}</div>
+          <div style="margin-top:8px"><strong>Autor comentario:</strong> ${escapeHtml(r.commentAuthorName || "")}</div>
+          <div class="cMeta">UID autor: ${escapeHtml(r.commentAuthorUid || "")}</div>
+          <div class="cMeta">Foto index: ${String(r.photoIndex ?? "")} - commentId: ${escapeHtml(r.commentId || "")}</div>
+          ${actionBtns}
+        </div>
+      `;
+    }).join("");
+  });
+
+  // Bloqueados realtime
+  onSnapshot(collection(db, "memorials", memorialId, "blocked"), async (snap) => {
+    await refreshPriv();
+    if (!priv.isModerator){
+      if (blockedList) blockedList.innerHTML = "";
+      return;
+    }
+    if (!blockedList) return;
+
+    if (snap.empty){
+      blockedList.innerHTML = `<div class="lb__hint">No hay bloqueados.</div>`;
+      return;
+    }
+
+    blockedList.innerHTML = snap.docs.map(d => {
+      const b = d.data() || {};
+      const uid = d.id;
+      const ts = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString() : "";
+      return `
+        <div class="cItem">
+          <div><strong>${escapeHtml(b.targetName || "Usuario")}</strong></div>
+          <div class="cMeta">UID: ${escapeHtml(uid)}</div>
+          <div class="cMeta">${escapeHtml(ts)}</div>
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+            <button class="lb__btn ghost jsUnblock" data-uid="${escapeHtml(uid)}" type="button">Desbloquear</button>
+            <button class="lb__btn ghost jsMakeMod" data-uid="${escapeHtml(uid)}" type="button">Hacer moderador</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  });
+
+  // Delegación de clicks (reportes + bloqueados)
+  panel?.addEventListener("click", async (e) => {
+    await refreshPriv();
+    if (!priv.isModerator) return;
+
+    const btnResolve = e.target.closest(".jsResolve");
+    const btnHide = e.target.closest(".jsHideFromReport");
+    const btnBlock = e.target.closest(".jsBlockFromReport");
+    const btnUnblock = e.target.closest(".jsUnblock");
+    const btnMakeMod1 = e.target.closest(".jsMakeModFromReport");
+    const btnMakeMod2 = e.target.closest(".jsMakeMod");
+
+    if (btnResolve){
+      const id = btnResolve.dataset.id;
+      const mode = btnResolve.dataset.mode;
+      const ref = doc(db, "memorials", memorialId, "reports", id);
+      await updateDoc(ref, {
+        status: mode,
+        resolvedBy: auth.currentUser?.uid || "",
+        resolvedAt: serverTimestamp(),
+        resolutionNote: ""
+      });
+      return;
+    }
+
+    if (btnHide){
+      const photo = Number(btnHide.dataset.photo);
+      const cid = btnHide.dataset.cid;
+      if (!Number.isInteger(photo) || !cid) return;
+
+      await updateDoc(commentDoc(memorialId, photo, cid), {
+        hidden: true,
+        hiddenBy: auth.currentUser?.uid || "",
+        hiddenAt: serverTimestamp()
+      });
+      showAuthError("Comentario ocultado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+
+    if (btnBlock){
+      const uid = btnBlock.dataset.uid;
+      const name = btnBlock.dataset.name || "";
+      if (!uid) return;
+
+      if (uid === auth.currentUser?.uid){
+        showAuthError("No puedes bloquearte a ti mismo.");
+        return;
+      }
+
+      await setDoc(blockedDoc(memorialId, uid), {
+        blocked: true,
+        targetName: name,
+        reason: "moderation",
+        blockedBy: auth.currentUser?.uid || "",
+        createdAt: serverTimestamp()
+      }, { merge: true });
+
+      showAuthError("Usuario bloqueado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+
+    if (btnUnblock){
+      const uid = btnUnblock.dataset.uid;
+      if (!uid) return;
+      await deleteDoc(blockedDoc(memorialId, uid));
+      showAuthError("Usuario desbloqueado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+
+    const modUid = (btnMakeMod1?.dataset.uid || btnMakeMod2?.dataset.uid || "").trim();
+    if ((btnMakeMod1 || btnMakeMod2) && modUid){
+      await setDoc(roleDoc(memorialId, modUid), {
+        role: "moderator",
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      showAuthError("Moderador asignado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+  });
+
+  onAuthStateChanged(auth, async () => {
+    await refreshPriv();
+  });
+
+  refreshPriv();
+}
+
+/* ---------------- Lightbox + comentarios + reacciones + reportar ---------------- */
 function setupLightboxFirebase(d, gallery){
   const memorialId = getMemorialId();
 
-  // Lightbox base
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
 
-  // Auth inside LB
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
   const userInfo = document.getElementById("userInfo");
 
-  // Comments
   const commentText = document.getElementById("commentText");
   const btnComment = document.getElementById("btnComment");
   const commentHint = document.getElementById("commentHint");
   const commentsList = document.getElementById("commentsList");
 
-  // Totals
   const totals = {
     "❤️": document.getElementById("t_heart"),
     "🙏": document.getElementById("t_pray"),
@@ -334,8 +584,7 @@ function setupLightboxFirebase(d, gallery){
   let unsubComments = null;
   let unsubReactions = null;
 
-  // estado
-  let priv = { isAdmin:false, isModerator:false, isBlocked:false };
+  let priv = { isAdmin:false, isModerator:false, isBlocked:false, role:"" };
 
   async function refreshPrivileges(){
     priv = await getPrivileges(memorialId, auth.currentUser);
@@ -349,7 +598,6 @@ function setupLightboxFirebase(d, gallery){
       btnLogin.hidden = true;
       btnLogout.hidden = false;
 
-      // si bloqueado, deshabilitamos todo
       if (priv.isBlocked){
         commentText.disabled = true;
         btnComment.disabled = true;
@@ -389,11 +637,9 @@ function setupLightboxFirebase(d, gallery){
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    // COMMENTS realtime (filtra ocultos a no moderadores)
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       async (snap) => {
-        // refresca privilegios por si cambió rol/bloqueo
         await refreshPrivileges();
 
         if (snap.empty){
@@ -403,7 +649,6 @@ function setupLightboxFirebase(d, gallery){
 
         const visibleDocs = snap.docs.filter(docu => {
           const c = docu.data() || {};
-          // si NO es moderador, no ve ocultos
           if (!priv.isModerator) return c.hidden !== true;
           return true;
         });
@@ -418,21 +663,29 @@ function setupLightboxFirebase(d, gallery){
           const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
           const hiddenTag = (c.hidden === true) ? `<div class="lb__hint">Oculto</div>` : ``;
 
-          // botones de moderación (solo moderador)
+          const reportBtn = (!priv.isModerator) ? `
+            <button class="lb__btn ghost jsReport"
+              data-cid="${docu.id}"
+              data-auid="${escapeHtml(c.uid || "")}"
+              data-aname="${escapeHtml(c.name || "")}"
+              type="button">Reportar</button>
+          ` : "";
+
           const modBtns = priv.isModerator ? `
             <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
               <button class="lb__btn ghost jsToggleHide"
                 data-cid="${docu.id}"
                 data-hidden="${c.hidden === true ? "1" : "0"}"
-                type="button">
-                ${c.hidden === true ? "Mostrar" : "Ocultar"}
-              </button>
+                type="button">${c.hidden === true ? "Mostrar" : "Ocultar"}</button>
+
               <button class="lb__btn ghost jsBlockUser"
                 data-uid="${escapeHtml(c.uid || "")}"
                 data-name="${escapeHtml(c.name || "")}"
-                type="button">
-                Bloquear usuario
-              </button>
+                type="button">Bloquear</button>
+
+              <button class="lb__btn ghost jsMakeMod"
+                data-uid="${escapeHtml(c.uid || "")}"
+                type="button">Hacer moderador</button>
             </div>
           ` : "";
 
@@ -442,6 +695,9 @@ function setupLightboxFirebase(d, gallery){
               ${hiddenTag}
               <div>${escapeHtml(c.text || "")}</div>
               <div class="cMeta">${escapeHtml(ts)}</div>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+                ${reportBtn}
+              </div>
               ${modBtns}
             </div>
           `;
@@ -449,7 +705,6 @@ function setupLightboxFirebase(d, gallery){
       }
     );
 
-    // REACTIONS realtime
     unsubReactions = onSnapshot(reactionsCol(memorialId, i), (snap) => {
       const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
       snap.forEach(docu => {
@@ -476,14 +731,12 @@ function setupLightboxFirebase(d, gallery){
     unsubReactions = null;
   }
 
-  // Abrir desde galería
   document.getElementById("gallery").addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
-  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -499,7 +752,6 @@ function setupLightboxFirebase(d, gallery){
     if (e.key === "Escape") closeLb();
   });
 
-  // Login/logout dentro lightbox
   btnLogin.addEventListener("click", async () => {
     try { await loginGoogle(); await refreshPrivileges(); setAuthUI(auth.currentUser); }
     catch(e){}
@@ -511,7 +763,6 @@ function setupLightboxFirebase(d, gallery){
     catch(e){ showAuthError(`No se pudo cerrar sesión. Error: ${e?.code || "desconocido"}`); }
   });
 
-  // Comentario
   btnComment.addEventListener("click", async () => {
     const user = auth.currentUser;
     await refreshPrivileges();
@@ -539,7 +790,6 @@ function setupLightboxFirebase(d, gallery){
     commentText.value = "";
   });
 
-  // Reacciones (toggle 0/1 por usuario)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -564,45 +814,75 @@ function setupLightboxFirebase(d, gallery){
     });
   });
 
-  // Moderación (delegación de eventos dentro del listado de comentarios)
+  // Delegación: reportar / moderar desde comentarios
   commentsList.addEventListener("click", async (e) => {
-    const hideBtn = e.target.closest(".jsToggleHide");
-    const blockBtn = e.target.closest(".jsBlockUser");
     await refreshPrivileges();
 
-    if (hideBtn){
-      if (!priv.isModerator){
-        showAuthError("No tienes permisos de moderación.");
+    const reportBtn = e.target.closest(".jsReport");
+    if (reportBtn){
+      const user = auth.currentUser;
+      if (!user){
+        showAuthError("Debes iniciar sesión para reportar.");
+        return;
+      }
+      if (priv.isBlocked){
+        showAuthError("Tu cuenta está bloqueada.");
         return;
       }
 
-      const cid = hideBtn.dataset.cid;
-      const currentlyHidden = hideBtn.dataset.hidden === "1";
-      const user = auth.currentUser;
+      const cid = reportBtn.dataset.cid;
+      const auid = reportBtn.dataset.auid;
+      const aname = reportBtn.dataset.aname;
 
-      const cRef = doc(db, "memorials", memorialId, "photos", String(current), "comments", cid);
+      const reason = prompt("Motivo del reporte (máx 300 caracteres):", "Contenido inapropiado");
+      if (!reason) return;
 
-      await updateDoc(cRef, {
-        hidden: !currentlyHidden,
-        hiddenBy: user?.uid || "",
-        hiddenAt: serverTimestamp()
+      await addDoc(reportsCol(memorialId), {
+        reporterUid: user.uid,
+        reporterName: user.displayName || "Usuario",
+        photoIndex: current,
+        commentId: cid,
+        commentAuthorUid: auid || "",
+        commentAuthorName: aname || "",
+        reason: String(reason).slice(0, 300),
+        status: "open",
+        createdAt: serverTimestamp()
       });
 
+      showAuthError("Reporte enviado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+
+    // Moderación
+    const hideBtn = e.target.closest(".jsToggleHide");
+    const blockBtn = e.target.closest(".jsBlockUser");
+    const makeModBtn = e.target.closest(".jsMakeMod");
+
+    if (hideBtn){
+      if (!priv.isModerator){
+        showAuthError("No tienes permisos.");
+        return;
+      }
+      const cid = hideBtn.dataset.cid;
+      const currentlyHidden = hideBtn.dataset.hidden === "1";
+      await updateDoc(commentDoc(memorialId, current, cid), {
+        hidden: !currentlyHidden,
+        hiddenBy: auth.currentUser?.uid || "",
+        hiddenAt: serverTimestamp()
+      });
       return;
     }
 
     if (blockBtn){
       if (!priv.isModerator){
-        showAuthError("No tienes permisos de moderación.");
+        showAuthError("No tienes permisos.");
         return;
       }
-
       const targetUid = blockBtn.dataset.uid;
-      const targetName = blockBtn.dataset.name;
-
+      const targetName = blockBtn.dataset.name || "";
       if (!targetUid) return;
 
-      // Evita auto-bloqueo accidental
       if (auth.currentUser?.uid === targetUid){
         showAuthError("No puedes bloquearte a ti mismo.");
         return;
@@ -610,18 +890,36 @@ function setupLightboxFirebase(d, gallery){
 
       await setDoc(blockedDoc(memorialId, targetUid), {
         blocked: true,
+        targetName: targetName,
         reason: "moderation",
-        targetName: targetName || "",
         blockedBy: auth.currentUser?.uid || "",
         createdAt: serverTimestamp()
       }, { merge: true });
 
-      showAuthError(`Usuario bloqueado: ${targetName || targetUid}`);
+      showAuthError("Usuario bloqueado.");
+      setTimeout(() => showAuthError(""), 1200);
+      return;
+    }
+
+    if (makeModBtn){
+      if (!priv.isModerator){
+        showAuthError("No tienes permisos.");
+        return;
+      }
+      const targetUid = (makeModBtn.dataset.uid || "").trim();
+      if (!targetUid) return;
+
+      await setDoc(roleDoc(memorialId, targetUid), {
+        role: "moderator",
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      showAuthError("Moderador asignado.");
+      setTimeout(() => showAuthError(""), 1200);
       return;
     }
   });
 
-  // actualizar UI auth cuando cambie sesión
   onAuthStateChanged(auth, async (user) => {
     await refreshPrivileges();
     setAuthUI(user);
@@ -633,7 +931,6 @@ async function loadMemorial(){
   await initAuthPersistence();
   setupGlobalAuthUI();
 
-  // Completa redirect si venías de redirect login
   try{
     await getRedirectResult(auth);
   }catch(err){
@@ -649,7 +946,6 @@ async function loadMemorial(){
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
-  // básicos
   const cover = document.getElementById("cover");
   cover.src = d.cover || "";
   cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
@@ -658,11 +954,9 @@ async function loadMemorial(){
   document.getElementById("dates").textContent = d.dates || "";
   document.getElementById("bio").textContent = d.bio || "";
 
-  // emocional + velas globales
   injectEmotionalBlocks(d);
   setupGlobalCandles(getMemorialId());
 
-  // galería
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
@@ -674,7 +968,6 @@ async function loadMemorial(){
     </button>
   `).join("");
 
-  // video
   if (d.video?.youtubeEmbedUrl){
     document.getElementById("videoSection").hidden = false;
     const vf = document.getElementById("videoFrame");
@@ -682,12 +975,13 @@ async function loadMemorial(){
     vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
   }
 
-  // audio
   if (d.audio?.src){
     document.getElementById("audioSection").hidden = false;
     document.getElementById("audioPlayer").src = d.audio.src;
   }
 
+  const memorialId = getMemorialId();
+  setupModeratorPanel(memorialId);
   setupLightboxFirebase(d, gallery);
 }
 
