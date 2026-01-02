@@ -31,14 +31,6 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-async function initAuthPersistence(){
-  try{
-    await setPersistence(auth, browserLocalPersistence);
-  }catch(e){
-    console.warn("No se pudo setear persistencia local:", e?.code || e);
-  }
-}
-
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
   return String(s)
@@ -50,14 +42,12 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
+  // Usa la carpeta como ID: /memoriales/Camilo-Fuentes/
   const parts = location.pathname.split("/").filter(Boolean);
   const idx = parts.indexOf("memoriales");
   return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
 }
 
-function photoDoc(memorialId, photoIndex){
-  return doc(db, "memorials", memorialId, "photos", String(photoIndex));
-}
 function commentsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "comments");
 }
@@ -77,19 +67,69 @@ function showAuthError(msg){
   box.textContent = msg;
 }
 
+async function initAuthPersistence(){
+  try{
+    await setPersistence(auth, browserLocalPersistence);
+  }catch(e){
+    console.warn("No se pudo setear persistencia local:", e?.code || e);
+  }
+}
+
+/* ---------------- Global auth UI (solo 1 vez) ---------------- */
+let globalAuthReady = false;
+
+function setupGlobalAuthUI(){
+  if (globalAuthReady) return; // <- evita doble registro
+  globalAuthReady = true;
+
+  const btnLoginMain = document.getElementById("btnLoginMain");
+  const btnLogoutMain = document.getElementById("btnLogoutMain");
+  const authStatus = document.getElementById("authStatus");
+
+  if (btnLoginMain){
+    btnLoginMain.addEventListener("click", async () => {
+      showAuthError("");
+      try{
+        await signInWithRedirect(auth, provider);
+      }catch(err){
+        showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
+      }
+    });
+  }
+
+  if (btnLogoutMain){
+    btnLogoutMain.addEventListener("click", async () => {
+      showAuthError("");
+      try{
+        await signOut(auth);
+      }catch(err){
+        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
+      }
+    });
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (authStatus){
+      authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
+    }
+    if (btnLoginMain) btnLoginMain.hidden = !!user;
+    if (btnLogoutMain) btnLogoutMain.hidden = !user;
+    if (user) showAuthError("");
+  });
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   await initAuthPersistence();
-setupGlobalAuthUI();
-  // Completa el login si venía de redirect y muestra error si falla
+  setupGlobalAuthUI();
+
+  // Completa el login si venía de redirect
   try{
     await getRedirectResult(auth);
   }catch(err){
     const code = err?.code || "";
-    if (code === "auth/unauthorized-domain"){
-      showAuthError("Firebase bloqueó el inicio de sesión: dominio NO autorizado. Debes agregar TUUSUARIO.github.io en Authentication → Settings → Authorized domains.");
-    } else {
-      showAuthError(`No se pudo iniciar sesión. Error: ${code || "desconocido"}`);
+    if (code && code !== "auth/no-auth-event"){
+      showAuthError(`No se pudo completar el inicio de sesión. Error: ${code}`);
     }
   }
 
@@ -137,50 +177,7 @@ setupGlobalAuthUI();
     document.getElementById("audioPlayer").src = d.audio.src;
   }
 
-  // Habilitar login global (index) + Lightbox
-  setupGlobalAuthUI();
   setupLightboxFirebase(d, gallery);
-}
-
-/* ---------------- Login global en la página ---------------- */
-function setupGlobalAuthUI(){
-  const btnLoginMain = document.getElementById("btnLoginMain");
-  const btnLogoutMain = document.getElementById("btnLogoutMain");
-  const authStatus = document.getElementById("authStatus");
-
-  if (btnLoginMain){
-    btnLoginMain.addEventListener("click", async () => {
-      showAuthError("");
-      try{
-        await signInWithRedirect(auth, provider);
-      }catch(err){
-        showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
-      }
-    });
-  }
-
-  if (btnLogoutMain){
-    btnLogoutMain.addEventListener("click", async () => {
-      showAuthError("");
-      try{
-        await signOut(auth);
-      }catch(err){
-        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
-      }
-    });
-  }
-
-  // Mantener estado
-  onAuthStateChanged(auth, (user) => {
-    if (authStatus){
-      authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
-    }
-    if (btnLoginMain) btnLoginMain.hidden = !!user;
-    if (btnLogoutMain) btnLogoutMain.hidden = !user;
-
-    // Si está logueado, limpamos mensajes de error
-    if (user) showAuthError("");
-  });
 }
 
 /* ---------------- Emotional blocks (tu versión) ---------------- */
@@ -249,7 +246,7 @@ function injectEmotionalBlocks(d){
 
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
 
-  // Vela local (después la hacemos global con Firebase si quieres)
+  // Vela local
   const btn = document.getElementById("candleBtn");
   const out = document.getElementById("candleCount");
   if (btn && out){
@@ -289,8 +286,8 @@ function setupLightboxFirebase(d, gallery){
     "😢": document.getElementById("t_sad")
   };
 
-  if (!btnLogin || !commentText || !commentsList){
-    console.error("Falta el lightbox PRO en index.html (panel de login/comentarios/reacciones).");
+  if (!lb || !lbImg || !lbClose || !btnLogin || !btnLogout || !userInfo || !commentText || !btnComment || !commentHint || !commentsList){
+    console.error("Falta el lightbox PRO en index.html (login/comentarios/reacciones).");
     return;
   }
 
@@ -322,6 +319,9 @@ function setupLightboxFirebase(d, gallery){
     }
   }
 
+  // Listener único para que el lightbox se actualice incluso si cambias sesión
+  onAuthStateChanged(auth, (user) => setAuthUI(user));
+
   async function openLb(i){
     if (!gallery[i]?.src) return;
     current = i;
@@ -330,9 +330,13 @@ function setupLightboxFirebase(d, gallery){
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
+    // Asegura UI correcta al abrir (por si el listener aún no disparó)
+    setAuthUI(auth.currentUser);
+
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
+    // COMMENTS realtime
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
@@ -351,23 +355,33 @@ function setupLightboxFirebase(d, gallery){
             </div>
           `;
         }).join("");
+      },
+      (err) => {
+        console.error("Error leyendo comentarios:", err);
       }
     );
 
-    unsubReactions = onSnapshot(reactionsCol(memorialId, i), (snap) => {
-      const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
-      snap.forEach(docu => {
-        const r = docu.data() || {};
-        for (const k of Object.keys(sum)){
-          sum[k] += Number(r[k] || 0);
-        }
-      });
-      totals["❤️"].textContent = String(sum["❤️"]);
-      totals["🙏"].textContent = String(sum["🙏"]);
-      totals["🕯️"].textContent = String(sum["🕯️"]);
-      totals["🌟"].textContent = String(sum["🌟"]);
-      totals["😢"].textContent = String(sum["😢"]);
-    });
+    // REACTIONS realtime
+    unsubReactions = onSnapshot(
+      reactionsCol(memorialId, i),
+      (snap) => {
+        const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
+        snap.forEach(docu => {
+          const r = docu.data() || {};
+          for (const k of Object.keys(sum)){
+            sum[k] += Number(r[k] || 0);
+          }
+        });
+        totals["❤️"].textContent = String(sum["❤️"]);
+        totals["🙏"].textContent = String(sum["🙏"]);
+        totals["🕯️"].textContent = String(sum["🕯️"]);
+        totals["🌟"].textContent = String(sum["🌟"]);
+        totals["😢"].textContent = String(sum["😢"]);
+      },
+      (err) => {
+        console.error("Error leyendo reacciones:", err);
+      }
+    );
   }
 
   function closeLb(){
@@ -380,58 +394,79 @@ function setupLightboxFirebase(d, gallery){
     unsubReactions = null;
   }
 
+  // Abrir al tocar foto
   document.getElementById("gallery").addEventListener("click", (e) => {
     const btn = e.target.closest(".mThumbBtn");
     if (!btn) return;
     openLb(Number(btn.dataset.i));
   });
 
+  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
     closeLb();
   });
-
   lb.addEventListener("click", (e) => {
     if (e.target === lb) closeLb();
   });
-
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
   });
 
+  // Login/logout dentro del lightbox
   btnLogin.addEventListener("click", async () => {
     showAuthError("");
-    await signInWithRedirect(auth, provider);
+    try{
+      await signInWithRedirect(auth, provider);
+    }catch(err){
+      showAuthError(`No se pudo iniciar sesión. Error: ${err?.code || "desconocido"}`);
+    }
   });
 
   btnLogout.addEventListener("click", async () => {
     showAuthError("");
-    await signOut(auth);
+    try{
+      await signOut(auth);
+    }catch(err){
+      showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
+    }
   });
 
+  // Publicar comentario
   btnComment.addEventListener("click", async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user){
+      showAuthError("Debes iniciar sesión para comentar.");
+      return;
+    }
 
     const text = (commentText.value || "").trim();
     if (!text) return;
 
-    await addDoc(commentsCol(memorialId, current), {
-      uid: user.uid,
-      name: user.displayName || "Usuario",
-      text: text.slice(0, 500),
-      createdAt: serverTimestamp()
-    });
-
-    commentText.value = "";
+    try{
+      await addDoc(commentsCol(memorialId, current), {
+        uid: user.uid,
+        name: user.displayName || "Usuario",
+        text: text.slice(0, 500),
+        createdAt: serverTimestamp()
+      });
+      commentText.value = "";
+    }catch(err){
+      showAuthError(`No se pudo guardar el comentario. Error: ${err?.code || "desconocido"}`);
+      console.error(err);
+    }
   });
 
+  // Reacciones toggle por usuario (1 doc por usuario)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user){
+        showAuthError("Debes iniciar sesión para reaccionar.");
+        return;
+      }
 
       const emo = btn.dataset.r;
       const ref = doc(reactionsCol(memorialId, current), user.uid);
@@ -439,10 +474,17 @@ function setupLightboxFirebase(d, gallery){
       const data = snap.exists() ? snap.data() : {};
       const next = (Number(data[emo] || 0) === 1) ? 0 : 1;
 
-      await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+      try{
+        await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+      }catch(err){
+        showAuthError(`No sugerar reacción. Error: ${err?.code || "desconocido"}`);
+        console.error(err);
+      }
     });
   });
 }
+
+loadMemorial().catch(console.error);
 
 loadMemorial().catch(console.error);
 
