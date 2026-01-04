@@ -23,6 +23,37 @@
     </div>
   </header>
 
+  <!-- BOTÓN SOLO PARA MOD/ADMIN (se muestra por JS) -->
+<section id="modEntry" class="mSection" hidden>
+  <div class="authRow">
+    <div class="authStatus">Herramientas</div>
+    <button id="btnOpenMod" class="gBtn" type="button">🛡️ Moderación</button>
+  </div>
+  <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
+</section>
+
+<!-- MODAL MODERACIÓN -->
+<div id="modModal" class="lb" hidden>
+  <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
+
+  <div class="lb__wrap" style="grid-template-columns:1fr;">
+    <aside class="lb__panel">
+      <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
+
+      <div class="row" style="margin-bottom:10px">
+        <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
+        <label class="chk">
+          <input type="checkbox" id="modShowHidden">
+          Mostrar ocultos
+        </label>
+      </div>
+
+      <div id="modList" class="lb__comments"></div>
+    </aside>
+  </div>
+</div>
+
+
   <!-- Contenido -->
   <main class="mWrap">
 
