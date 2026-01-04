@@ -246,12 +246,27 @@ function setupGlobalCandles(memorialId){
     (err) => { console.warn("Candles snapshot error:", err?.code || err); }
   );
 
-  onAuthStateChanged(auth, async (user) => {
-    if (!user){
-      btn.disabled = true;
-      btn.textContent = "Inicia sesión para encender una vela";
-      return;
-    }
+onAuthStateChanged(auth, async (user) => {
+  const modEntry = document.getElementById("modEntry");
+  const modPanel = document.getElementById("modPanel");
+
+  if (!user){
+    canModerate = false;
+    canSeeHidden = false;
+    if (modEntry) modEntry.hidden = true;
+    if (modPanel) modPanel.hidden = true;
+    return;
+  }
+
+  const role = await getRole(memorialId, user.uid);
+
+  canModerate = role === "global-admin" || role === "memorial-admin" || role === "mod";
+  canSeeHidden = canModerate;
+
+  // 🔥 MOSTRAR panel a admin y mod
+  if (modEntry) modEntry.hidden = !canModerate;
+  if (modPanel) modPanel.hidden = !canModerate;
+});
 
     btn.disabled = false;
     const ref = candleDoc(memorialId, user.uid);
