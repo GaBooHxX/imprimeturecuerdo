@@ -1,10 +1,7 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 import {
   getFirestore,
@@ -46,20 +43,25 @@ function esc(s){
     .replaceAll("'","&#039;");
 }
 
-/* Rutas / roles */
+/* Rutas roles */
 function adminGlobalDoc(uid){ return doc(db, "admins", uid); }
 function memorialAdminDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "admin", uid); }
 function memorialModDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "mods", uid); }
 
-function isAdminRole(role){
-  return role === "global-admin" || role === "memorial-admin";
-}
+async function getMyRole(memorialId, uid){
+  // global admin?
+  const g = await getDoc(adminGlobalDoc(uid));
+  if (g.exists()) return "global-admin";
 
-function roleLabel(role){
-  if (role === "global-admin") return "Administrador global";
-  if (role === "memorial-admin") return "Administrador del memorial";
-  if (role === "mod") return "Moderador";
-  return "Usuario";
+  // memorial admin?
+  const a = await getDoc(memorialAdminDoc(memorialId, uid));
+  if (a.exists()) return "memorial-admin";
+
+  // mod?
+  const m = await getDoc(memorialModDoc(memorialId, uid));
+  if (m.exists()) return "mod";
+
+  return "none";
 }
 
 /* UI refs */
@@ -80,13 +82,12 @@ const btnMakeMod = document.getElementById("btnMakeMod");
 const btnRemoveMod = document.getElementById("btnRemoveMod");
 const promoteMsg = document.getElementById("promoteMsg");
 
-const modRoleText = document.getElementById("modRoleText"); // lo pusiste en el HTML del login
+const modRoleText = document.getElementById("modRoleText");
 
-// Estado
-let currentRole = "none";
-let canModerate = false;
-let canManageMods = false; // SOLO admin
+/* Estado */
+let currentRole = "none"; // "global-admin" | "memorial-admin" | "mod" | "none"
 
+/* Modal */
 function openModal(){
   if (!modModal) return;
   modModal.hidden = false;
@@ -98,63 +99,7 @@ function closeModal(){
   document.body.style.overflow = "";
 }
 
-async function getMyRole(memorialId, uid){
-  // global admin?
-  const g = await getDoc(adminGlobalDoc(uid));
-  if (g.exists()) return "global-admin";
-
-  // memorial admin?
-  const a = await getDoc(memorialAdminDoc(memorialId, uid));
-  if (a.exists()) return "memorial-admin";
-
-  // mod?
-  const m = await getDoc(memorialModDoc(memorialId, uid));
-  if (m.exists()) return "mod";
-
-  return "none";
-}
-
-/* Aplica rol al UI (PASO 1) */
-function applyRoleToUI(role){
-  currentRole = role;
-  canModerate = (role !== "none");
-  canManageMods = isAdminRole(role);
-
-  // Mostrar rol en el login
-  if (modRoleText){
-    modRoleText.textContent = `Rol actual: ${roleLabel(role)}`;
-  }
-
-  // Mostrar/ocultar entrada de herramientas (solo mod/admin)
-  if (modEntry){
-    modEntry.hidden = !canModerate;
-  }
-
-  // Solo ADMIN ve y usa el bloque de "Hacer/Quitar moderador"
-  // (tomamos el contenedor del input promoteUid)
-  const promoteBlock = promoteUid?.closest("div"); // tu caja del bloque
-
-  if (promoteBlock){
-    promoteBlock.style.display = canManageMods ? "" : "none";
-  }
-  if (btnMakeMod) btnMakeMod.disabled = !canManageMods;
-  if (btnRemoveMod) btnRemoveMod.disabled = !canManageMods;
-
-  // Mensaje de ayuda
-  if (promoteMsg){
-    if (!canModerate){
-      promoteMsg.textContent = "";
-    } else if (!canManageMods){
-      promoteMsg.textContent = "Solo un administrador puede asignar o quitar moderadores.";
-    } else {
-      promoteMsg.textContent = "";
-    }
-  }
-}
-
-/* Carga comments para moderación:
-   comments cuelgan de photos/{photoId}/comments, necesitamos saber cuántas fotos hay.
-   Lo sacamos del data.json (gallery length). */
+/* photos count desde data.json (gallery length) */
 async function getPhotoCount(){
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) return 0;
@@ -163,14 +108,9 @@ async function getPhotoCount(){
   return items.length;
 }
 
+/* Cargar lista de comentarios (por foto) */
 async function loadModerationList(memorialId){
   if (!modList) return;
-
-  // seguridad extra: si no puede moderar, no carga nada
-  if (!canModerate){
-    modList.innerHTML = `<div class="lb__hint">No tienes permisos para moderar.</div>`;
-    return;
-  }
 
   const showHidden = !!modShowHidden?.checked;
   modList.innerHTML = `<div class="lb__hint">Cargando…</div>`;
@@ -233,21 +173,16 @@ async function loadModerationList(memorialId){
     `;
   }).join("");
 
-  // acciones toggle
+  // toggle hide/show
   modList.querySelectorAll('button[data-act="toggle"]').forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
       if (!user) return;
 
-      // seguridad extra
-      if (!canModerate) return;
-
       const photoId = btn.dataset.photo;
       const commentId = btn.dataset.id;
 
       const ref = doc(db, "memorials", memorialId, "photos", String(photoId), "comments", commentId);
-
-      // lee estado actual
       const snap = await getDoc(ref);
       if (!snap.exists()) return;
 
@@ -265,6 +200,44 @@ async function loadModerationList(memorialId){
   });
 }
 
+/* Habilitar / bloquear herramientas de “hacer mod” */
+function applyPromotePermissions(){
+  const canPromote = (currentRole === "global-admin" || currentRole === "memorial-admin");
+
+  if (btnMakeMod) btnMakeMod.disabled = !canPromote;
+  if (btnRemoveMod) btnRemoveMod.disabled = !canPromote;
+  if (promoteUid) promoteUid.disabled = !canPromote;
+
+  if (promoteMsg){
+    if (!auth.currentUser){
+      promoteMsg.textContent = "";
+    } else if (!canPromote){
+      promoteMsg.textContent = "Solo el admin (global o del memorial) puede asignar o quitar moderadores.";
+    } else {
+      promoteMsg.textContent = "";
+    }
+  }
+}
+
+/* Mostrar rol en pantalla */
+function paintRole(){
+  if (!modRoleText) return;
+
+  if (!auth.currentUser){
+    modRoleText.textContent = "";
+    return;
+  }
+
+  const map = {
+    "global-admin": "Rol: Admin global ✅",
+    "memorial-admin": "Rol: Admin del memorial ✅",
+    "mod": "Rol: Moderador ✅",
+    "none": "Rol: Usuario (sin permisos)"
+  };
+  modRoleText.textContent = map[currentRole] || "";
+}
+
+/* UI hooks */
 function setupUIHooks(memorialId){
   // UID row
   onAuthStateChanged(auth, (user) => {
@@ -300,16 +273,14 @@ function setupUIHooks(memorialId){
     await loadModerationList(memorialId);
   });
 
-  // ===== PASO 1: promote mod (SOLO ADMIN) =====
+  // promote mod (solo admin)
   btnMakeMod?.addEventListener("click", async () => {
     const me = auth.currentUser;
     const target = (promoteUid?.value || "").trim();
-
     if (!me || !target) return;
 
-    // Bloqueo en UI + doble seguro
-    if (!canManageMods){
-      if (promoteMsg) promoteMsg.textContent = "No tienes permiso para asignar moderadores.";
+    if (!(currentRole === "global-admin" || currentRole === "memorial-admin")){
+      if (promoteMsg) promoteMsg.textContent = "No tienes permisos para asignar moderadores.";
       return;
     }
 
@@ -320,7 +291,8 @@ function setupUIHooks(memorialId){
         role: "mod",
         createdBy: me.uid,
         createdAt: serverTimestamp()
-      });
+      }, { merge: true });
+
       if (promoteMsg) promoteMsg.textContent = "Listo: ahora ese UID es moderador ✅";
     }catch(err){
       if (promoteMsg) promoteMsg.textContent = `Error: ${err?.code || err}`;
@@ -330,12 +302,10 @@ function setupUIHooks(memorialId){
   btnRemoveMod?.addEventListener("click", async () => {
     const me = auth.currentUser;
     const target = (promoteUid?.value || "").trim();
-
     if (!me || !target) return;
 
-    // Bloqueo en UI + doble seguro
-    if (!canManageMods){
-      if (promoteMsg) promoteMsg.textContent = "No tienes permiso para quitar moderadores.";
+    if (!(currentRole === "global-admin" || currentRole === "memorial-admin")){
+      if (promoteMsg) promoteMsg.textContent = "No tienes permisos para quitar moderadores.";
       return;
     }
 
@@ -356,20 +326,27 @@ async function boot(){
   setupUIHooks(memorialId);
 
   onAuthStateChanged(auth, async (user) => {
-    // si no hay login, todo oculto
+    if (!modEntry) return;
+
     if (!user){
-      applyRoleToUI("none");
+      currentRole = "none";
+      modEntry.hidden = true;
+      paintRole();
+      applyPromotePermissions();
       return;
     }
 
     try{
-      const role = await getMyRole(memorialId, user.uid);
-      applyRoleToUI(role);
+      currentRole = await getMyRole(memorialId, user.uid);
     }catch(e){
-      // si falla getRole por permisos, tratamos como none
-      console.warn("getRole error:", e?.code || e);
-      applyRoleToUI("none");
+      currentRole = "none";
     }
+
+    // Mostrar botón de moderación a admin/mod
+    modEntry.hidden = (currentRole === "none");
+
+    paintRole();
+    applyPromotePermissions();
   });
 }
 
