@@ -22,7 +22,9 @@ import {
   collection,
   getDocs,
   query,
-  orderBy
+  orderBy,
+  limit,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ---------- init ---------- */
@@ -60,7 +62,8 @@ const commentsList = document.getElementById("commentsList");
 
 /* ---------- state ---------- */
 let currentMemorialId = null;
-let currentRole = { isAdmin:false, isMod:false };
+let isAdminGlobal = false;
+let isAdminOfMemorial = false; // solo para asignar mods
 
 /* ---------- helpers ---------- */
 function showError(msg){
@@ -71,6 +74,15 @@ function showError(msg){
   }
   errorBox.hidden = false;
   errorBox.textContent = msg;
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
 async function login(){
@@ -91,32 +103,50 @@ async function login(){
   }
 }
 
-async function checkRole(uid){
-  // Admin global
-  const adminGlobal = await getDoc(doc(db, "admins", uid));
-  const isAdminGlobal = adminGlobal.exists();
-
-  return { isAdminGlobal };
+/* Admin global */
+async function checkGlobalAdmin(uid){
+  const snap = await getDoc(doc(db, "admins", uid));
+  return snap.exists();
 }
 
-async function checkRoleForMemorial(uid, memorialId){
-  const adminMem = await getDoc(doc(db, "memorials", memorialId, "admin", uid));
-  const modMem = await getDoc(doc(db, "memorials", memorialId, "mods", uid));
+/* Admin del memorial (solo para permitir asignar moderadores desde este panel) */
+async function checkMemorialAdmin(uid, memorialId){
+  const snap = await getDoc(doc(db, "memorials", memorialId, "admin", uid));
+  return snap.exists();
+}
 
-  return {
-    isAdmin: adminMem.exists(),
-    isMod: modMem.exists()
-  };
+/* Sacar cantidad de fotos desde data.json del memorial */
+async function getPhotoCountFromDataJson(memorialId){
+  // Probamos rutas típicas (ajusta si tu sitio usa otra)
+  const candidates = [
+    `/memoriales/${memorialId}/data.json`,
+    `/memorial/${memorialId}/data.json`,
+    `/memorials/${memorialId}/data.json`,
+    `../memoriales/${memorialId}/data.json`,
+    `../memorial/${memorialId}/data.json`,
+    `../memorials/${memorialId}/data.json`,
+  ];
+
+  for (const url of candidates){
+    try{
+      const res = await fetch(url, { cache:"no-store" });
+      if (!res.ok) continue;
+      const d = await res.json();
+      const items = Array.isArray(d.gallery) ? d.gallery : [];
+      return { count: items.length, urlUsed: url };
+    }catch(_){}
+  }
+  return { count: 0, urlUsed: null };
 }
 
 /* ---------- events ---------- */
-btnLogin.addEventListener("click", login);
+btnLogin?.addEventListener("click", login);
 
-btnLogout.addEventListener("click", async () => {
+btnLogout?.addEventListener("click", async () => {
   await signOut(auth);
 });
 
-btnLoadMemorial.addEventListener("click", async () => {
+btnLoadMemorial?.addEventListener("click", async () => {
   const v = (memorialIdInput.value || "").trim();
   if (!v) return;
 
@@ -127,12 +157,14 @@ btnLoadMemorial.addEventListener("click", async () => {
   await loadComments();
 });
 
-btnRefresh.addEventListener("click", loadComments);
-showHidden.addEventListener("change", loadComments);
+btnRefresh?.addEventListener("click", loadComments);
+showHidden?.addEventListener("change", loadComments);
 
-btnMakeMod.addEventListener("click", async () => {
+btnMakeMod?.addEventListener("click", async () => {
   if (!currentMemorialId) return showError("Primero carga un memorial.");
-  if (!currentRole.isAdmin) return showError("Solo un admin del memorial puede asignar moderadores.");
+
+  // 👇 Como pediste: solo ADMIN del memorial asigna moderadores (no moderador).
+  if (!isAdminOfMemorial) return showError("Solo un ADMIN de este memorial puede asignar moderadores.");
 
   const uid = (uidInput.value || "").trim();
   if (!uid) return showError("Pega un UID válido.");
@@ -141,7 +173,7 @@ btnMakeMod.addEventListener("click", async () => {
   try{
     await setDoc(doc(db, "memorials", currentMemorialId, "mods", uid), {
       role: "mod",
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
       createdBy: auth.currentUser.uid
     }, { merge:true });
 
@@ -151,9 +183,10 @@ btnMakeMod.addEventListener("click", async () => {
   }
 });
 
-btnRemoveMod.addEventListener("click", async () => {
+btnRemoveMod?.addEventListener("click", async () => {
   if (!currentMemorialId) return showError("Primero carga un memorial.");
-  if (!currentRole.isAdmin) return showError("Solo un admin del memorial puede quitar moderadores.");
+
+  if (!isAdminOfMemorial) return showError("Solo un ADMIN de este memorial puede quitar moderadores.");
 
   const uid = (uidInput.value || "").trim();
   if (!uid) return showError("Pega un UID válido.");
@@ -186,7 +219,7 @@ onAuthStateChanged(auth, async (user) => {
   btnLogin.hidden = true;
   btnLogout.hidden = false;
 
-  const { isAdminGlobal } = await checkRole(user.uid);
+  isAdminGlobal = await checkGlobalAdmin(user.uid);
 
   if (!isAdminGlobal){
     roleInfo.textContent = "No tienes permisos: debes ser admin global (/admins/{uid}).";
@@ -199,7 +232,6 @@ onAuthStateChanged(auth, async (user) => {
   roleInfo.textContent = "Admin global OK. Carga un memorial para moderar.";
   memorialPick.hidden = false;
 
-  // Si ya había memorial cargado, actualiza
   if (currentMemorialId){
     await refreshRoleAndUI();
     await loadComments();
@@ -211,54 +243,57 @@ async function refreshRoleAndUI(){
   const user = auth.currentUser;
   if (!user || !currentMemorialId) return;
 
-  // Para operar dentro del memorial, debes ser admin o mod en ese memorial.
-  const r = await checkRoleForMemorial(user.uid, currentMemorialId);
-  currentRole = r;
-
-  if (!r.isAdmin && !r.isMod){
-    roleInfo.textContent = "Eres admin global, pero NO tienes rol en este memorial (admin/mod).";
-    adminTools.hidden = true;
-    commentsSection.hidden = true;
-    return;
-  }
-
-  roleInfo.textContent = r.isAdmin ? "Rol en memorial: ADMIN" : "Rol en memorial: MODERADOR";
-
-  // Admin tools solo para admin del memorial
-  adminTools.hidden = !r.isAdmin;
+  // Global admin siempre puede ver/moderar comentarios
   commentsSection.hidden = false;
+
+  // Pero para asignar mods desde este panel: solo admin del memorial
+  isAdminOfMemorial = await checkMemorialAdmin(user.uid, currentMemorialId);
+
+  adminTools.hidden = !isAdminOfMemorial;
+  roleInfo.textContent =
+    isAdminOfMemorial
+      ? "Rol en memorial: ADMIN (además eres admin global)"
+      : "Eres admin global. En este memorial NO eres admin (puedes moderar comentarios, pero no asignar mods).";
 }
 
 async function loadComments(){
   const user = auth.currentUser;
   if (!user) return;
   if (!currentMemorialId) return;
-
-  // Necesitas ser admin/mod del memorial
-  if (!currentRole.isAdmin && !currentRole.isMod) return;
+  if (!isAdminGlobal) return;
 
   commentsList.innerHTML = "Cargando…";
 
   try{
-    const photosSnap = await getDocs(collection(db, "memorials", currentMemorialId, "photos"));
+    const { count: photoCount, urlUsed } = await getPhotoCountFromDataJson(currentMemorialId);
+
+    if (!photoCount){
+      commentsList.innerHTML = `<div class="muted">
+        No pude leer gallery desde data.json del memorial.<br>
+        Revisa que exista: <code>/memoriales/${escapeHtml(currentMemorialId)}/data.json</code> (o ruta equivalente).
+      </div>`;
+      return;
+    }
+
     const blocks = [];
 
-    for (const photo of photosSnap.docs){
+    for (let i = 0; i < photoCount; i++){
       const commentsSnap = await getDocs(
         query(
-          collection(db, "memorials", currentMemorialId, "photos", photo.id, "comments"),
-          orderBy("createdAt", "desc")
+          collection(db, "memorials", currentMemorialId, "photos", String(i), "comments"),
+          orderBy("createdAt", "desc"),
+          limit(200)
         )
       );
 
       commentsSnap.forEach(c => {
-        const d = c.data();
+        const d = c.data() || {};
         const hidden = !!d.hidden;
 
         if (hidden && !showHidden.checked) return;
 
         blocks.push({
-          photoId: photo.id,
+          photoId: String(i),
           commentId: c.id,
           name: d.name || "Anónimo",
           text: d.text || "",
@@ -279,7 +314,10 @@ async function loadComments(){
       el.style.opacity = b.hidden ? "0.55" : "1";
 
       el.innerHTML = `
-        <div><strong>${escapeHtml(b.name)}</strong> <span class="muted">(foto ${b.photoId})</span></div>
+        <div>
+          <strong>${escapeHtml(b.name)}</strong>
+          <span class="muted">(foto ${escapeHtml(b.photoId)})</span>
+        </div>
         <div>${escapeHtml(b.text)}</div>
         <div class="actions">
           <button class="small ${b.hidden ? "" : "danger"}" type="button">
@@ -296,6 +334,9 @@ async function loadComments(){
       commentsList.appendChild(el);
     }
 
+    // opcional: debug ruta usada
+    // console.log("data.json usado:", urlUsed);
+
   }catch(e){
     showError("No se pudieron cargar comentarios: " + (e?.code || e));
     commentsList.innerHTML = "";
@@ -305,10 +346,10 @@ async function loadComments(){
 async function toggleHidden(photoId, commentId, hide){
   try{
     await setDoc(
-      doc(db, "memorials", currentMemorialId, "photos", photoId, "comments", commentId),
+      doc(db, "memorials", currentMemorialId, "photos", String(photoId), "comments", commentId),
       {
         hidden: hide,
-        hiddenAt: new Date(),
+        hiddenAt: serverTimestamp(),
         hiddenBy: auth.currentUser.uid
       },
       { merge:true }
@@ -316,13 +357,4 @@ async function toggleHidden(photoId, commentId, hide){
   }catch(e){
     showError("No se pudo ocultar/mostrar: " + (e?.code || e));
   }
-}
-
-function escapeHtml(s){
-  return String(s)
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
 }
