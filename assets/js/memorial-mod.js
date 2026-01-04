@@ -37,7 +37,6 @@ function getMemorialId(){
   return parts[0] || "memorial";
 }
 
-
 function esc(s){
   return String(s ?? "")
     .replaceAll("&","&amp;")
@@ -47,9 +46,21 @@ function esc(s){
     .replaceAll("'","&#039;");
 }
 
+/* Rutas / roles */
 function adminGlobalDoc(uid){ return doc(db, "admins", uid); }
 function memorialAdminDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "admin", uid); }
 function memorialModDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "mods", uid); }
+
+function isAdminRole(role){
+  return role === "global-admin" || role === "memorial-admin";
+}
+
+function roleLabel(role){
+  if (role === "global-admin") return "Administrador global";
+  if (role === "memorial-admin") return "Administrador del memorial";
+  if (role === "mod") return "Moderador";
+  return "Usuario";
+}
 
 /* UI refs */
 const modEntry = document.getElementById("modEntry");
@@ -68,6 +79,13 @@ const promoteUid = document.getElementById("promoteUid");
 const btnMakeMod = document.getElementById("btnMakeMod");
 const btnRemoveMod = document.getElementById("btnRemoveMod");
 const promoteMsg = document.getElementById("promoteMsg");
+
+const modRoleText = document.getElementById("modRoleText"); // lo pusiste en el HTML del login
+
+// Estado
+let currentRole = "none";
+let canModerate = false;
+let canManageMods = false; // SOLO admin
 
 function openModal(){
   if (!modModal) return;
@@ -96,8 +114,46 @@ async function getMyRole(memorialId, uid){
   return "none";
 }
 
+/* Aplica rol al UI (PASO 1) */
+function applyRoleToUI(role){
+  currentRole = role;
+  canModerate = (role !== "none");
+  canManageMods = isAdminRole(role);
+
+  // Mostrar rol en el login
+  if (modRoleText){
+    modRoleText.textContent = `Rol actual: ${roleLabel(role)}`;
+  }
+
+  // Mostrar/ocultar entrada de herramientas (solo mod/admin)
+  if (modEntry){
+    modEntry.hidden = !canModerate;
+  }
+
+  // Solo ADMIN ve y usa el bloque de "Hacer/Quitar moderador"
+  // (tomamos el contenedor del input promoteUid)
+  const promoteBlock = promoteUid?.closest("div"); // tu caja del bloque
+
+  if (promoteBlock){
+    promoteBlock.style.display = canManageMods ? "" : "none";
+  }
+  if (btnMakeMod) btnMakeMod.disabled = !canManageMods;
+  if (btnRemoveMod) btnRemoveMod.disabled = !canManageMods;
+
+  // Mensaje de ayuda
+  if (promoteMsg){
+    if (!canModerate){
+      promoteMsg.textContent = "";
+    } else if (!canManageMods){
+      promoteMsg.textContent = "Solo un administrador puede asignar o quitar moderadores.";
+    } else {
+      promoteMsg.textContent = "";
+    }
+  }
+}
+
 /* Carga comments para moderación:
-   como tus comments cuelgan de photos/{photoId}/comments, necesitamos saber cuántas fotos hay.
+   comments cuelgan de photos/{photoId}/comments, necesitamos saber cuántas fotos hay.
    Lo sacamos del data.json (gallery length). */
 async function getPhotoCount(){
   const res = await fetch("data.json", { cache: "no-store" });
@@ -109,6 +165,12 @@ async function getPhotoCount(){
 
 async function loadModerationList(memorialId){
   if (!modList) return;
+
+  // seguridad extra: si no puede moderar, no carga nada
+  if (!canModerate){
+    modList.innerHTML = `<div class="lb__hint">No tienes permisos para moderar.</div>`;
+    return;
+  }
 
   const showHidden = !!modShowHidden?.checked;
   modList.innerHTML = `<div class="lb__hint">Cargando…</div>`;
@@ -123,7 +185,6 @@ async function loadModerationList(memorialId){
 
   for (let i = 0; i < photoCount; i++){
     const colRef = collection(db, "memorials", memorialId, "photos", String(i), "comments");
-
     const qy = query(colRef, orderBy("createdAt", "desc"), limit(50));
     const snap = await getDocs(qy);
 
@@ -178,12 +239,15 @@ async function loadModerationList(memorialId){
       const user = auth.currentUser;
       if (!user) return;
 
+      // seguridad extra
+      if (!canModerate) return;
+
       const photoId = btn.dataset.photo;
       const commentId = btn.dataset.id;
 
       const ref = doc(db, "memorials", memorialId, "photos", String(photoId), "comments", commentId);
 
-      // detecta estado actual (necesitamos leer)
+      // lee estado actual
       const snap = await getDoc(ref);
       if (!snap.exists()) return;
 
@@ -236,13 +300,20 @@ function setupUIHooks(memorialId){
     await loadModerationList(memorialId);
   });
 
-  // promote mod
+  // ===== PASO 1: promote mod (SOLO ADMIN) =====
   btnMakeMod?.addEventListener("click", async () => {
     const me = auth.currentUser;
     const target = (promoteUid?.value || "").trim();
+
     if (!me || !target) return;
 
-    promoteMsg.textContent = "Aplicando…";
+    // Bloqueo en UI + doble seguro
+    if (!canManageMods){
+      if (promoteMsg) promoteMsg.textContent = "No tienes permiso para asignar moderadores.";
+      return;
+    }
+
+    if (promoteMsg) promoteMsg.textContent = "Aplicando…";
 
     try{
       await setDoc(memorialModDoc(memorialId, target), {
@@ -250,23 +321,31 @@ function setupUIHooks(memorialId){
         createdBy: me.uid,
         createdAt: serverTimestamp()
       });
-      promoteMsg.textContent = "Listo: ahora ese UID es moderador ✅";
+      if (promoteMsg) promoteMsg.textContent = "Listo: ahora ese UID es moderador ✅";
     }catch(err){
-      promoteMsg.textContent = `Error: ${err?.code || err}`;
+      if (promoteMsg) promoteMsg.textContent = `Error: ${err?.code || err}`;
     }
   });
 
   btnRemoveMod?.addEventListener("click", async () => {
+    const me = auth.currentUser;
     const target = (promoteUid?.value || "").trim();
-    if (!auth.currentUser || !target) return;
 
-    promoteMsg.textContent = "Quitando…";
+    if (!me || !target) return;
+
+    // Bloqueo en UI + doble seguro
+    if (!canManageMods){
+      if (promoteMsg) promoteMsg.textContent = "No tienes permiso para quitar moderadores.";
+      return;
+    }
+
+    if (promoteMsg) promoteMsg.textContent = "Quitando…";
 
     try{
       await deleteDoc(memorialModDoc(memorialId, target));
-      promoteMsg.textContent = "Listo: moderador removido ✅";
+      if (promoteMsg) promoteMsg.textContent = "Listo: moderador removido ✅";
     }catch(err){
-      promoteMsg.textContent = `Error: ${err?.code || err}`;
+      if (promoteMsg) promoteMsg.textContent = `Error: ${err?.code || err}`;
     }
   });
 }
@@ -277,19 +356,20 @@ async function boot(){
   setupUIHooks(memorialId);
 
   onAuthStateChanged(auth, async (user) => {
-    if (!modEntry) return;
-
+    // si no hay login, todo oculto
     if (!user){
-      modEntry.hidden = true;
+      applyRoleToUI("none");
       return;
     }
 
-    const role = await getMyRole(memorialId, user.uid);
-
-    // Solo admin/mod ven el botón
-    modEntry.hidden = (role === "none");
-
-    // Tip: si quieres, aquí podrías mostrar el rol en algún textito
+    try{
+      const role = await getMyRole(memorialId, user.uid);
+      applyRoleToUI(role);
+    }catch(e){
+      // si falla getRole por permisos, tratamos como none
+      console.warn("getRole error:", e?.code || e);
+      applyRoleToUI("none");
+    }
   });
 }
 
