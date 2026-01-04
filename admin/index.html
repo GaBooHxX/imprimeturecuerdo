@@ -2,24 +2,69 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Panel Administración</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel Administración | Imprime tu Recuerdo</title>
   <link rel="stylesheet" href="./admin.css">
 </head>
 <body>
 
-<h1>Panel de Administración</h1>
-<p id="roleInfo">Verificando permisos…</p>
+  <header class="top">
+    <h1>Panel de Administración</h1>
+    <div class="auth">
+      <div id="authStatus" class="pill">Verificando…</div>
+      <button id="btnLogin" class="btn" type="button">Continuar con Google</button>
+      <button id="btnLogout" class="btn ghost" type="button" hidden>Cerrar sesión</button>
+    </div>
+  </header>
 
-<section id="usersSection" hidden>
-  <h2>Usuarios</h2>
-  <ul id="usersList"></ul>
-</section>
+  <p id="roleInfo" class="muted">Cargando permisos…</p>
+  <p id="errorBox" class="error" hidden></p>
 
-<section id="commentsSection" hidden>
-  <h2>Comentarios</h2>
-  <div id="commentsList"></div>
-</section>
+  <!-- Selector de memorial -->
+  <section id="memorialPick" class="card" hidden>
+    <h2>Seleccionar memorial</h2>
+    <p class="muted">Escribe el ID exacto del memorial (ej: <strong>Camilo-Fuentes</strong>).</p>
 
-<script type="module" src="./admin.js"></script>
+    <div class="row">
+      <input id="memorialIdInput" class="input" placeholder="Camilo-Fuentes" />
+      <button id="btnLoadMemorial" class="btn" type="button">Cargar</button>
+    </div>
+
+    <div class="muted" style="margin-top:10px">
+      Memorial activo: <strong id="memorialActive">—</strong>
+    </div>
+  </section>
+
+  <!-- Acciones Admin -->
+  <section id="adminTools" class="card" hidden>
+    <h2>Herramientas de admin</h2>
+
+    <h3>Hacer moderador (1 click)</h3>
+    <p class="muted">Primero la persona debe haber iniciado sesión al menos una vez (para que exista su UID).</p>
+
+    <div class="row">
+      <input id="uidInput" class="input" placeholder="Pega UID del usuario (Authentication → Users)" />
+      <button id="btnMakeMod" class="btn" type="button">Hacer moderador</button>
+      <button id="btnRemoveMod" class="btn ghost" type="button">Quitar moderador</button>
+    </div>
+
+    <div id="modResult" class="muted" style="margin-top:10px"></div>
+  </section>
+
+  <!-- Comentarios -->
+  <section id="commentsSection" class="card" hidden>
+    <h2>Comentarios del memorial</h2>
+    <div class="row">
+      <button id="btnRefresh" class="btn" type="button">Refrescar</button>
+      <label class="chk">
+        <input type="checkbox" id="showHidden" />
+        Mostrar ocultos
+      </label>
+    </div>
+
+    <div id="commentsList" class="list"></div>
+  </section>
+
+  <script type="module" src="./admin.js"></script>
 </body>
 </html>
