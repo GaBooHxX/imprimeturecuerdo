@@ -34,21 +34,13 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-/* ---------------- Constantes ---------------- */
-const MEMORIALS_COL = "memorials";   // Firestore collection
-const URL_SEGMENT = "memoriales";    // URL segment en tu sitio
-
-/* ---------------- Estado global de permisos ---------------- */
-let roleState = "none";        // "none" | "mod" | "memorial-admin" | "global-admin"
-let canModerate = false;       // puede moderar/ocultar
-let canSeeHidden = false;      // puede ver ocultos (admin/mod)
-
 /* ---------------- Roles / permisos ---------------- */
 function adminGlobalDoc(uid){ return doc(db, "admins", uid); }
-function memorialAdminDoc(memorialId, uid){ return doc(db, MEMORIALS_COL, memorialId, "admin", uid); }
-function memorialModDoc(memorialId, uid){ return doc(db, MEMORIALS_COL, memorialId, "mods", uid); }
+function memorialAdminDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "admin", uid); }
+function memorialModDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "mods", uid); }
 
 async function getRole(memorialId, uid){
+  // IMPORTANTE: esto puede fallar por reglas. Lo manejamos donde se usa.
   const g = await getDoc(adminGlobalDoc(uid));
   if (g.exists()) return "global-admin";
 
@@ -71,25 +63,38 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
+/**
+ * Detecta memorialId desde la URL aunque uses:
+ * /memoriales/{id}/
+ * /memorial/{id}/
+ * /memorials/{id}/
+ */
 function getMemorialId(){
   const parts = location.pathname.split("/").filter(Boolean);
-  const idx = parts.indexOf(URL_SEGMENT);
-  return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
+
+  const candidates = ["memoriales", "memorial", "memorials"];
+  for (const key of candidates){
+    const idx = parts.indexOf(key);
+    if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
+  }
+
+  // fallback: si estás dentro de algo tipo /Camilo-Fuentes/ directo
+  return parts[0] || "memorial";
 }
 
 function commentsCol(memorialId, photoIndex){
-  return collection(db, MEMORIALS_COL, memorialId, "photos", String(photoIndex), "comments");
+  return collection(db, "memorials", memorialId, "photos", String(photoIndex), "comments");
 }
 function reactionsCol(memorialId, photoIndex){
-  return collection(db, MEMORIALS_COL, memorialId, "photos", String(photoIndex), "reactions");
+  return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
 }
 
 /* Velas globales */
 function candlesCol(memorialId){
-  return collection(db, MEMORIALS_COL, memorialId, "candles");
+  return collection(db, "memorials", memorialId, "candles");
 }
 function candleDoc(memorialId, uid){
-  return doc(db, MEMORIALS_COL, memorialId, "candles", uid);
+  return doc(db, "memorials", memorialId, "candles", uid);
 }
 
 function showAuthError(msg){
@@ -158,7 +163,6 @@ function setupGlobalAuthUI(){
     });
   }
 
-  // Este listener solo actualiza texto/botones. Los permisos los manejamos aparte.
   onAuthStateChanged(auth, (user) => {
     if (authStatus){
       authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
@@ -172,30 +176,72 @@ function setupGlobalAuthUI(){
 /* ---------------- UID row (copiar UID) ---------------- */
 function setupUidRow(){
   const row = document.getElementById("uidRow");
-  const codeEl = document.getElementById("myUid");
-  const btnCopy = document.getElementById("copyUid");
-  if (!row || !codeEl || !btnCopy) return;
+  const myUid = document.getElementById("myUid");
+  const copyBtn = document.getElementById("copyUid");
+
+  if (!row || !myUid || !copyBtn) return;
 
   onAuthStateChanged(auth, (user) => {
     if (!user){
       row.hidden = true;
-      codeEl.textContent = "";
+      myUid.textContent = "";
       return;
     }
     row.hidden = false;
-    codeEl.textContent = user.uid;
+    myUid.textContent = user.uid;
   });
 
-  btnCopy.addEventListener("click", async () => {
-    const uid = codeEl.textContent || "";
-    if (!uid) return;
+  copyBtn.addEventListener("click", async () => {
+    const u = auth.currentUser?.uid;
+    if (!u) return;
     try{
-      await navigator.clipboard.writeText(uid);
-      btnCopy.textContent = "Copiado ✅";
-      setTimeout(() => (btnCopy.textContent = "Copiar UID"), 1200);
+      await navigator.clipboard.writeText(u);
     }catch(e){
-      btnCopy.textContent = "No se pudo copiar";
-      setTimeout(() => (btnCopy.textContent = "Copiar UID"), 1200);
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = u;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+  });
+}
+
+/* ---------------- Mostrar panel MOD/ADMIN (NO depende de candles) ---------------- */
+function setupModVisibility(memorialId){
+  const modEntry = document.getElementById("modEntry");
+  const modPanel = document.getElementById("modPanel");
+  const modRoleText = document.getElementById("modRoleText");
+
+  // si no existe HTML de panel, no hacemos nada
+  if (!modEntry && !modPanel) return;
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user){
+      if (modEntry) modEntry.hidden = true;
+      if (modPanel) modPanel.hidden = true;
+      if (modRoleText) modRoleText.textContent = "";
+      return;
+    }
+
+    try{
+      const role = await getRole(memorialId, user.uid);
+      const canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
+
+      if (modEntry) modEntry.hidden = !canModerate;
+      if (modPanel) modPanel.hidden = !canModerate;
+
+      if (modRoleText){
+        modRoleText.textContent = canModerate ? `Rol detectado: ${role}` : "";
+      }
+    }catch(err){
+      // Si la regla Firestore bloquea getDoc, cae aquí y ocultamos panel.
+      if (modEntry) modEntry.hidden = true;
+      if (modPanel) modPanel.hidden = true;
+      if (modRoleText) modRoleText.textContent = "";
+
+      console.warn("Rol no verificable (probable reglas):", err?.code || err);
     }
   });
 }
@@ -259,43 +305,6 @@ function injectEmotionalBlocks(d){
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
 }
 
-/* ---------------- Panel mod/admin (mostrar/ocultar) ---------------- */
-function setupModEntryUI(memorialId){
-  const modEntry = document.getElementById("modEntry");
-  const modPanel = document.getElementById("modPanel");
-
-  // Si no existen en el HTML, no hacemos nada
-  if (!modEntry && !modPanel) return;
-
-  onAuthStateChanged(auth, async (user) => {
-    if (!user){
-      roleState = "none";
-      canModerate = false;
-      canSeeHidden = false;
-      if (modEntry) modEntry.hidden = true;
-      if (modPanel) modPanel.hidden = true;
-      return;
-    }
-
-    try{
-      const role = await getRole(memorialId, user.uid);
-      roleState = role;
-
-      canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
-      canSeeHidden = canModerate;
-
-      if (modEntry) modEntry.hidden = !canModerate;
-      if (modPanel) modPanel.hidden = !canModerate;
-    }catch(e){
-      roleState = "none";
-      canModerate = false;
-      canSeeHidden = false;
-      if (modEntry) modEntry.hidden = true;
-      if (modPanel) modPanel.hidden = true;
-    }
-  });
-}
-
 /* ---------------- Velas globales ---------------- */
 function candleBurst(){
   const host = document.getElementById("extraBlocks") || document.body;
@@ -318,7 +327,6 @@ function setupGlobalCandles(memorialId){
   const out = document.getElementById("candleCount");
   if (!btn || !out) return;
 
-  // contador total realtime
   onSnapshot(
     candlesCol(memorialId),
     (snap) => { out.textContent = `🕯️ ${snap.size} velas encendidas`; },
@@ -368,6 +376,9 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
+
+  // Solo afecta si vemos comentarios ocultos en lightbox
+  let canSeeHidden = false;
 
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
@@ -419,8 +430,20 @@ function setupLightboxFirebase(gallery){
     }
   }
 
-  // Actualiza UI auth (permisos canSeeHidden ya los mantiene setupModEntryUI)
-  onAuthStateChanged(auth, (user) => setAuthUI(user));
+  onAuthStateChanged(auth, async (user) => {
+    setAuthUI(user);
+    if (!user){
+      canSeeHidden = false;
+      return;
+    }
+    try{
+      const role = await getRole(memorialId, user.uid);
+      canSeeHidden = (role !== "none");
+    }catch(e){
+      // si reglas bloquean, público no ve ocultos
+      canSeeHidden = false;
+    }
+  });
 
   async function openLb(i){
     if (!gallery[i]?.src) return;
@@ -448,7 +471,6 @@ function setupLightboxFirebase(gallery){
             const c = x.data();
             const hidden = !!c.hidden;
 
-            // Ocultos no se ven para público
             if (hidden && !canSeeHidden) return "";
 
             const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
@@ -470,7 +492,9 @@ function setupLightboxFirebase(gallery){
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
       },
-      (err) => console.warn("comments snapshot error:", err?.code || err)
+      (err) => {
+        console.warn("comments snapshot error:", err?.code || err);
+      }
     );
 
     unsubReactions = onSnapshot(
@@ -487,7 +511,9 @@ function setupLightboxFirebase(gallery){
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
       },
-      (err) => console.warn("reactions snapshot error:", err?.code || err)
+      (err) => {
+        console.warn("reactions snapshot error:", err?.code || err);
+      }
     );
   }
 
@@ -593,8 +619,12 @@ async function loadMemorial(){
   setupGlobalAuthUI();
   setupUidRow();
 
-  // si venías desde redirect
   try{ await getRedirectResult(auth); }catch(e){}
+
+  const memorialId = getMemorialId();
+
+  // ✅ Esto es lo que faltaba: panel mod/admin siempre se controla acá
+  setupModVisibility(memorialId);
 
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
@@ -617,7 +647,6 @@ async function loadMemorial(){
 
   injectEmotionalBlocks(d);
 
-  // galería
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
@@ -630,7 +659,6 @@ async function loadMemorial(){
     `).join("");
   }
 
-  // video/audio
   if (d.video?.youtubeEmbedUrl){
     const vs = document.getElementById("videoSection");
     const vf = document.getElementById("videoFrame");
@@ -640,6 +668,7 @@ async function loadMemorial(){
       vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     }
   }
+
   if (d.audio?.src){
     const as = document.getElementById("audioSection");
     const ap = document.getElementById("audioPlayer");
@@ -647,11 +676,6 @@ async function loadMemorial(){
     if (ap) ap.src = d.audio.src;
   }
 
-  // ✅ Panel mod/admin visible según rol (FUERA de velas)
-  const memorialId = getMemorialId();
-  setupModEntryUI(memorialId);
-
-  // activar lightbox + velas globales
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 }
