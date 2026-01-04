@@ -52,6 +52,15 @@ async function getRole(memorialId, uid){
   return "none";
 }
 
+function roleLabel(role){
+  switch(role){
+    case "global-admin": return "Administrador global";
+    case "memorial-admin": return "Administrador del memorial";
+    case "mod": return "Moderador";
+    default: return "Usuario";
+  }
+}
+
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
   return String(s)
@@ -81,9 +90,7 @@ function getMemorialId(){
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
-  // fallback: si estás en /{algo}/{ID}/
   if (parts.length >= 2) return parts[parts.length - 2];
-
   return "memorial";
 }
 
@@ -183,7 +190,6 @@ function setupUidRow(){
   const row = document.getElementById("uidRow");
   const myUid = document.getElementById("myUid");
   const copyBtn = document.getElementById("copyUid");
-
   if (!row || !myUid || !copyBtn) return;
 
   onAuthStateChanged(auth, (user) => {
@@ -208,7 +214,7 @@ function setupUidRow(){
   });
 }
 
-/* ---------------- Mostrar panel MOD/ADMIN ---------------- */
+/* ---------------- Mostrar panel MOD/ADMIN + indicador de rol ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
@@ -217,14 +223,12 @@ function setupModeratorEntry(){
   const btnOpenMod = document.getElementById("btnOpenMod");
   const modClose = document.getElementById("modClose");
 
-  const modPanel = document.getElementById("modPanel");   // panel de admin (promover / reportes / bloqueados)
-  const roleText = document.getElementById("modRoleText");
+  const modPanel = document.getElementById("modPanel");   // panel admin (promover / reportes / bloqueados)
+  const roleText = document.getElementById("modRoleText"); // ✅ aquí mostramos el rol
 
-  // por defecto, oculto
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
 
-  // abrir/cerrar modal (si existe)
   if (btnOpenMod && modModal){
     btnOpenMod.onclick = () => {
       modModal.hidden = false;
@@ -246,7 +250,7 @@ function setupModeratorEntry(){
     });
   }
 
-  // listener único para rol
+  // ✅ Indicador de rol: también lo mostramos aunque NO sea mod/admin
   onAuthStateChanged(auth, async (user) => {
     if (!user){
       if (modEntry) modEntry.hidden = true;
@@ -263,21 +267,16 @@ function setupModeratorEntry(){
       role = "none";
     }
 
+    // Mostrar siempre el rol si existe el elemento
+    if (roleText){
+      roleText.textContent = `Rol: ${roleLabel(role)}`;
+    }
+
     const canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
-    const canPromote = (role === "global-admin" || role === "memorial-admin");
+    const canPromote  = (role === "global-admin" || role === "memorial-admin");
 
     if (modEntry) modEntry.hidden = !canModerate;
-
-    // El panel “hacer moderador” SOLO para admin (no para mod)
     if (modPanel) modPanel.hidden = !canPromote;
-
-    if (roleText){
-      roleText.textContent =
-        (role === "global-admin") ? "Rol: Administrador global" :
-        (role === "memorial-admin") ? "Rol: Administrador de este memorial" :
-        (role === "mod") ? "Rol: Moderador" :
-        "Rol: Usuario";
-    }
   });
 }
 
@@ -362,7 +361,6 @@ function setupGlobalCandles(memorialId){
   const out = document.getElementById("candleCount");
   if (!btn || !out) return;
 
-  // contador realtime
   onSnapshot(
     candlesCol(memorialId),
     (snap) => { out.textContent = `🕯️ ${snap.size} velas encendidas`; },
