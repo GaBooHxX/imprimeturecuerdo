@@ -3,10 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- No indexar -->
   <meta name="robots" content="noindex, nofollow" />
-
   <title>Memorial</title>
 
   <!-- CSS memorial -->
@@ -23,38 +20,6 @@
     </div>
   </header>
 
-  <!-- BOTÓN SOLO PARA MOD/ADMIN (se muestra por JS) -->
-<section id="modEntry" class="mSection" hidden>
-  <div class="authRow">
-    <div class="authStatus">Herramientas</div>
-    <button id="btnOpenMod" class="gBtn" type="button">🛡️ Moderación</button>
-  </div>
-  <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
-</section>
-
-<!-- MODAL MODERACIÓN -->
-<div id="modModal" class="lb" hidden>
-  <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
-
-  <div class="lb__wrap" style="grid-template-columns:1fr;">
-    <aside class="lb__panel">
-      <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
-
-      <div class="row" style="margin-bottom:10px">
-        <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
-        <label class="chk">
-          <input type="checkbox" id="modShowHidden">
-          Mostrar ocultos
-        </label>
-      </div>
-
-      <div id="modList" class="lb__comments"></div>
-    </aside>
-  </div>
-</div>
-
-
-  <!-- Contenido -->
   <main class="mWrap">
 
     <!-- Portada -->
@@ -68,9 +33,7 @@
     <!-- Login GLOBAL -->
     <section class="mSection">
       <h2>Deja tu recuerdo</h2>
-      <p class="meta">
-        Para comentar y reaccionar en las fotografías, debes inicia sesión con Google.
-      </p>
+      <p class="meta">Para comentar y reaccionar en las fotografías, debes iniciar sesión con Google.</p>
 
       <div class="authRow">
         <div id="authStatus" class="authStatus">Invitado</div>
@@ -85,18 +48,30 @@
         </button>
       </div>
 
-      <p id="authError" class="meta" style="color:#e07a7a; margin-top:8px;" hidden></p>
-    </section>
-<div id="uidRow" class="authRow" style="margin-top:10px" hidden>
-  <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-    <span>Tu UID:</span>
-    <code id="myUid" style="opacity:.9"></code>
-  </div>
+      <p id="authError" class="authError" hidden></p>
 
-  <button id="copyUid" class="gBtn ghost" type="button">
-    Copiar UID
-  </button>
-</div>
+      <!-- UID (se muestra solo al iniciar sesión) -->
+      <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
+        <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+          <span>Tu UID:</span>
+          <code id="myUid" style="opacity:.9"></code>
+        </div>
+
+        <button id="copyUid" class="gBtn ghost" type="button">
+          Copiar UID
+        </button>
+      </div>
+    </section>
+
+    <!-- BOTÓN SOLO PARA MOD/ADMIN (lo muestra JS si corresponde) -->
+    <section id="modEntry" class="mSection" hidden>
+      <div class="authRow">
+        <div class="authStatus">Herramientas</div>
+        <button id="btnOpenMod" class="gBtn" type="button">🛡️ Moderación</button>
+      </div>
+      <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
+    </section>
+
     <!-- Contenido emocional dinámico -->
     <div id="extraBlocks"></div>
 
@@ -110,11 +85,7 @@
     <section class="mSection" id="videoSection" hidden>
       <h2>Video</h2>
       <div class="mVideo">
-        <iframe
-          id="videoFrame"
-          allowfullscreen
-          loading="lazy">
-        </iframe>
+        <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
       </div>
     </section>
 
@@ -130,112 +101,79 @@
   <!-- LIGHTBOX PRO -->
   <!-- ===================== -->
   <div id="lightbox" class="lb" hidden>
-
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
     <div class="lb__wrap">
-
-      <!-- Imagen -->
       <img id="lbImg" class="lb__img" alt="">
 
-      <!-- Panel lateral -->
       <aside class="lb__panel">
-
-        <!-- Auth dentro del lightbox -->
         <div class="lb__auth">
           <div id="userInfo" class="lb__user">Invitado</div>
 
-          <button id="btnLogin" class="lb__btn" type="button">
-            Iniciar sesión con Google
-          </button>
-
-          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>
-            Cerrar sesión
-          </button>
+          <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión con Google</button>
+          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
         </div>
 
-        <!-- Reacciones -->
         <div class="lb__reactions">
-          <button class="rBtn" data-r="❤️" type="button" disabled>
-            ❤️ <span id="t_heart">0</span>
-          </button>
-          <button class="rBtn" data-r="🙏" type="button" disabled>
-            🙏 <span id="t_pray">0</span>
-          </button>
-          <button class="rBtn" data-r="🕯️" type="button" disabled>
-            🕯️ <span id="t_candle">0</span>
-          </button>
-          <button class="rBtn" data-r="🌟" type="button" disabled>
-            🌟 <span id="t_star">0</span>
-          </button>
-          <button class="rBtn" data-r="😢" type="button" disabled>
-            😢 <span id="t_sad">0</span>
-          </button>
+          <button class="rBtn" data-r="❤️" type="button" disabled>❤️ <span id="t_heart">0</span></button>
+          <button class="rBtn" data-r="🙏" type="button" disabled>🙏 <span id="t_pray">0</span></button>
+          <button class="rBtn" data-r="🕯️" type="button" disabled>🕯️ <span id="t_candle">0</span></button>
+          <button class="rBtn" data-r="🌟" type="button" disabled>🌟 <span id="t_star">0</span></button>
+          <button class="rBtn" data-r="😢" type="button" disabled>😢 <span id="t_sad">0</span></button>
         </div>
 
-        <!-- Comentarios -->
         <div class="lb__commentBox">
-          <textarea
-            id="commentText"
-            class="lb__text"
-            placeholder="Deja un recuerdo sobre esta fotografía…"
-            maxlength="500"
-            disabled></textarea>
-
-          <button
-            id="btnComment"
-            class="lb__btn primary"
-            type="button"
-            disabled>
-            Publicar comentario
-          </button>
-
-          <div id="commentHint" class="lb__hint">
-            Para comentar y reaccionar debes iniciar sesión.
-          </div>
+          <textarea id="commentText" class="lb__text" placeholder="Deja un recuerdo sobre esta fotografía…" maxlength="500" disabled></textarea>
+          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar comentario</button>
+          <div id="commentHint" class="lb__hint">Para comentar y reaccionar debes iniciar sesión.</div>
         </div>
 
         <div id="commentsList" class="lb__comments"></div>
-
       </aside>
     </div>
   </div>
 
-  <!-- JS memorial -->
-  <script type="module" src="../../assets/js/memorial-page.js"></script>
-<section class="mSection" id="modPanel" hidden>
-  <h2>Panel de moderación</h2>
-  <p class="meta" id="modRoleText" style="margin-top:6px"></p>
+  <!-- ===================== -->
+  <!-- MODAL MODERACIÓN -->
+  <!-- ===================== -->
+  <div id="modModal" class="lb" hidden>
+    <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
-  <div style="display:grid; gap:14px; margin-top:12px">
+    <div class="lb__wrap" style="grid-template-columns:1fr;">
+      <aside class="lb__panel">
+        <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
 
-    <!-- Promover por UID -->
-    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
-      <h3 style="margin:0 0 8px 0">Hacer moderador (1 click)</h3>
-      <p class="meta" style="margin-top:0">Pega el UID del usuario (te lo puede copiar desde la misma página).</p>
+        <div class="authRow" style="margin-bottom:10px">
+          <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
 
-      <div class="authRow">
-        <input id="promoteUid" placeholder="UID del usuario" style="flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:inherit">
-        <button id="btnMakeMod" class="lb__btn primary" type="button">Hacer moderador</button>
-        <button id="btnRemoveMod" class="lb__btn ghost" type="button">Quitar moderador</button>
-      </div>
+          <label class="lb__hint" style="display:flex; gap:8px; align-items:center">
+            <input type="checkbox" id="modShowHidden">
+            Mostrar ocultos
+          </label>
+        </div>
 
-      <div class="lb__hint" id="promoteMsg" style="margin-top:10px"></div>
+        <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03); margin-bottom:12px">
+          <h3 style="margin:0 0 8px">Hacer moderador (1 click)</h3>
+          <p class="lb__hint" style="margin-top:0">Pega el UID del usuario (primero debe iniciar sesión para tener UID).</p>
+
+          <div class="authRow">
+            <input id="promoteUid" placeholder="UID del usuario" style="flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:inherit">
+            <button id="btnMakeMod" class="lb__btn primary" type="button">Hacer moderador</button>
+            <button id="btnRemoveMod" class="lb__btn ghost" type="button">Quitar moderador</button>
+          </div>
+
+          <div class="lb__hint" id="promoteMsg" style="margin-top:10px"></div>
+        </div>
+
+        <h3 style="margin:10px 0 8px">Comentarios (ocultar/mostrar)</h3>
+        <div id="modList" class="lb__comments"></div>
+      </aside>
     </div>
-
-    <!-- Reportes -->
-    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
-      <h3 style="margin:0 0 8px 0">Reportes</h3>
-      <div id="reportsList" class="lb__comments"></div>
-    </div>
-
-    <!-- Bloqueados -->
-    <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03)">
-      <h3 style="margin:0 0 8px 0">Usuarios bloqueados</h3>
-      <div id="blockedList" class="lb__comments"></div>
-    </div>
-
   </div>
-</section>
+
+  <!-- JS (al final, para que encuentre todos los IDs) -->
+  <script type="module" src="../../assets/js/memorial-page.js"></script>
+  <script type="module" src="../../assets/js/memorial-mod.js"></script>
+
 </body>
 </html>
