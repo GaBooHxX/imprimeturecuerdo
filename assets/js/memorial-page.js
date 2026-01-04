@@ -34,6 +34,24 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+/* ---------------- Roles / permisos ---------------- */
+function adminGlobalDoc(uid){ return doc(db, "admins", uid); }
+function memorialAdminDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "admin", uid); }
+function memorialModDoc(memorialId, uid){ return doc(db, "memorials", memorialId, "mods", uid); }
+
+async function getRole(memorialId, uid){
+  const g = await getDoc(adminGlobalDoc(uid));
+  if (g.exists()) return "global-admin";
+
+  const a = await getDoc(memorialAdminDoc(memorialId, uid));
+  if (a.exists()) return "memorial-admin";
+
+  const m = await getDoc(memorialModDoc(memorialId, uid));
+  if (m.exists()) return "mod";
+
+  return "none";
+}
+
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
   return String(s)
@@ -57,7 +75,7 @@ function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
 }
 
-// Velas globales
+/* Velas globales */
 function candlesCol(memorialId){
   return collection(db, "memorials", memorialId, "candles");
 }
@@ -93,7 +111,6 @@ async function loginGoogle(){
     await signInWithPopup(auth, provider);
   }catch(err){
     const code = err?.code || "";
-    // fallback a redirect si el popup falla
     if (
       code === "auth/popup-blocked" ||
       code === "auth/popup-closed-by-user" ||
@@ -144,7 +161,6 @@ function setupGlobalAuthUI(){
 
 /* ---------------- Bloques emocionales ---------------- */
 function injectEmotionalBlocks(d){
-  // OJO: en tu HTML ya tienes <div id="extraBlocks"></div>
   const host = document.getElementById("extraBlocks");
   if (!host) return;
 
@@ -224,7 +240,6 @@ function setupGlobalCandles(memorialId){
   const out = document.getElementById("candleCount");
   if (!btn || !out) return;
 
-  // contador total realtime
   onSnapshot(
     candlesCol(memorialId),
     (snap) => { out.textContent = `🕯️ ${snap.size} velas encendidas`; },
@@ -241,7 +256,6 @@ function setupGlobalCandles(memorialId){
     btn.disabled = false;
     const ref = candleDoc(memorialId, user.uid);
 
-    // estado inicial (encendida o no)
     try{
       const snap = await getDoc(ref);
       btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
@@ -276,6 +290,10 @@ function setupGlobalCandles(memorialId){
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
 
+  // Estado de permisos para ocultos
+  let canSeeHidden = false;
+
+  // elementos lightbox
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
@@ -326,19 +344,31 @@ function setupLightboxFirebase(gallery){
     }
   }
 
-  onAuthStateChanged(auth, (user) => setAuthUI(user));
+  // Un solo listener: actualiza UI + permisos
+  onAuthStateChanged(auth, async (user) => {
+    setAuthUI(user);
+    if (!user){
+      canSeeHidden = false;
+      return;
+    }
+    try{
+      const role = await getRole(memorialId, user.uid);
+      canSeeHidden = (role !== "none");
+    }catch(e){
+      canSeeHidden = false;
+    }
+  });
 
   async function openLb(i){
     if (!gallery[i]?.src) return;
     current = i;
 
-    // ✅ Abrir SIEMPRE visualmente
+    // abrir visualmente SIEMPRE
     lbImg.src = gallery[i].src;
     lb.hidden = false;
     document.body.style.overflow = "hidden";
-    setAuthUI(auth.currentUser);
 
-    // cortar listeners previos
+    // limpiar listeners previos
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
@@ -347,21 +377,38 @@ function setupLightboxFirebase(gallery){
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
+
         if (snap.empty){
           commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
           return;
         }
-        commentsList.innerHTML = snap.docs.map(x => {
-          const c = x.data();
-          const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
-          return `
-            <div class="cItem">
-              <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
-              <div>${escapeHtml(c.text || "")}</div>
-              <div class="cMeta">${escapeHtml(ts)}</div>
-            </div>
-          `;
-        }).join("");
+
+        const rendered = snap.docs
+          .map(x => {
+            const c = x.data();
+            const hidden = !!c.hidden;
+
+            // Ocultos no se ven para público
+            if (hidden && !canSeeHidden) return "";
+
+            const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
+            const badge = hidden ? `<div class="lb__hint">🛡️ Oculto</div>` : "";
+
+            return `
+              <div class="cItem">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+                  <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
+                  ${badge}
+                </div>
+                <div>${escapeHtml(c.text || "")}</div>
+                <div class="cMeta">${escapeHtml(ts)}</div>
+              </div>
+            `;
+          })
+          .filter(Boolean)
+          .join("");
+
+        commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
       },
       (err) => {
         console.warn("comments snapshot error:", err?.code || err);
@@ -454,7 +501,8 @@ function setupLightboxFirebase(gallery){
           uid: user.uid,
           name: user.displayName || "Usuario",
           text: text.slice(0, 500),
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          hidden: false
         });
         if (commentText) commentText.value = "";
       }catch(err){
@@ -544,7 +592,7 @@ async function loadMemorial(){
     if (ap) ap.src = d.audio.src;
   }
 
-  // 🔥 activar lightbox + velas globales
+  // activar lightbox + velas globales
   setupLightboxFirebase(gallery);
   setupGlobalCandles(getMemorialId());
 }
