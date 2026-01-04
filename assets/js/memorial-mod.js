@@ -29,9 +29,14 @@ const db = getFirestore(app);
 /* Helpers */
 function getMemorialId(){
   const parts = location.pathname.split("/").filter(Boolean);
-  const idx = parts.indexOf("memoriales");
-  return (idx >= 0 && parts[idx + 1]) ? parts[idx + 1] : "memorial";
+  const keys = ["memoriales", "memorial", "memorials"];
+  for (const k of keys){
+    const idx = parts.indexOf(k);
+    if (idx >= 0 && parts[idx + 1]) return parts[idx + 1];
+  }
+  return parts[0] || "memorial";
 }
+
 
 function esc(s){
   return String(s ?? "")
