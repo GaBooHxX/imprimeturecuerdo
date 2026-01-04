@@ -1,0 +1,16 @@
+body{
+  font-family: system-ui;
+  background:#0b0c10;
+  color:#eee;
+  padding:20px;
+}
+
+h1,h2{color:#d6b26b}
+
+button{
+  padding:6px 10px;
+  margin-top:6px;
+  border-radius:6px;
+  border:none;
+  cursor:pointer;
+}
