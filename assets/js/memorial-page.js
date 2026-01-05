@@ -1,10 +1,7 @@
-// memorial-page.js (REEMPLAZAR COMPLETO)
-// Requiere: firebase-config.js exportando firebaseConfig
-// Firebase v10.12.5 (CDN)
-
 import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
 import {
   getAuth,
   GoogleAuthProvider,
@@ -76,12 +73,10 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
-  // 1) query param ?mid=
   const url = new URL(location.href);
   const mid = url.searchParams.get("mid");
   if (mid) return mid;
 
-  // 2) /memoriales/{id}/...
   const parts = location.pathname.split("/").filter(Boolean);
 
   const idxEs = parts.indexOf("memoriales");
@@ -90,8 +85,8 @@ function getMemorialId(){
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
-  // 3) fallback (penúltimo)
-  if (parts.length >= 2) return parts[parts.length - 2];
+  // fallback
+  if (parts.length >= 1) return parts[parts.length - 1];
   return "memorial";
 }
 
@@ -131,55 +126,7 @@ async function bumpVisit(memorialId){
   }
 }
 
-// Estado de stats en memoria (para render consistente)
-const statsState = {
-  visits: 0,
-  comments: 0,
-  reactions: 0,
-  candles: 0
-};
-
-function renderStats(){
-  const sec = document.getElementById("statsSection");
-  const grid = document.getElementById("statsGrid");
-  if (!sec || !grid) return;
-
-  sec.hidden = false;
-
-  const { visits, comments, reactions, candles } = statsState;
-
-  const cards = [
-    { k: "Visitas", v: `${visits}`, s: "Personas que han acompañado este recuerdo" },
-    { k: "Recuerdos", v: `${comments}`, s: "Mensajes dejados con cariño" },
-    { k: "Velas", v: `${candles}`, s: "Velas encendidas en este memorial" },
-    { k: "Reacciones", v: `${reactions}`, s: "Gestos de amor en las fotos" }
-  ];
-
-  grid.innerHTML = cards.map(c => `
-    <div class="mStat">
-      <p class="k">${escapeHtml(c.k)}</p>
-      <p class="v">${escapeHtml(c.v)}</p>
-      <p class="s">${escapeHtml(c.s)}</p>
-    </div>
-  `).join("");
-}
-
-function setupStatsLive(memorialId){
-  onSnapshot(
-    statsDoc(memorialId),
-    (snap) => {
-      const data = snap.exists() ? snap.data() : {};
-      statsState.visits = Number(data.visits || 0);
-      statsState.comments = Number(data.comments || 0);
-      statsState.reactions = Number(data.reactions || 0);
-      // candles lo setea su propio listener
-      renderStats();
-    },
-    (err) => console.warn("Stats snapshot error:", err?.code || err)
-  );
-}
-
-/* UI helpers */
+/* ---------------- UI errors ---------------- */
 function showAuthError(msg){
   const box = document.getElementById("authError");
   if (!box) return;
@@ -192,6 +139,7 @@ function showAuthError(msg){
   box.textContent = msg;
 }
 
+/* ---------------- Auth persistence + login ---------------- */
 async function initAuthPersistence(){
   try{
     await setPersistence(auth, browserLocalPersistence);
@@ -200,7 +148,6 @@ async function initAuthPersistence(){
   }
 }
 
-/* Login popup + fallback redirect */
 async function loginGoogle(){
   showAuthError("");
   await initAuthPersistence();
@@ -221,7 +168,7 @@ async function loginGoogle(){
   }
 }
 
-/* ---------------- UI: login global (index) ---------------- */
+/* ---------------- UI: login global ---------------- */
 let globalAuthReady = false;
 function setupGlobalAuthUI(){
   if (globalAuthReady) return;
@@ -256,7 +203,7 @@ function setupGlobalAuthUI(){
   });
 }
 
-/* ---------------- UID row (para copiar) ---------------- */
+/* ---------------- UID row ---------------- */
 function setupUidRow(){
   const row = document.getElementById("uidRow");
   const myUid = document.getElementById("myUid");
@@ -289,18 +236,17 @@ function setupUidRow(){
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
-  const modEntry = document.getElementById("modEntry");     // botón “🛡️ Moderación”
+  const modEntry = document.getElementById("modEntry");   // botón “🛡️ Moderación”
   const modModal = document.getElementById("modModal");
   const btnOpenMod = document.getElementById("btnOpenMod");
   const modClose = document.getElementById("modClose");
 
-  const modPanel = document.getElementById("modPanel");     // panel admin (promover / etc)
-  const roleText = document.getElementById("modRoleText");  // texto rol
+  const modPanel = document.getElementById("modPanel");   // panel admin (promover)
+  const roleText = document.getElementById("modRoleText"); // texto rol
 
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
 
-  // abrir/cerrar modal de moderación (si existe)
   if (btnOpenMod && modModal){
     btnOpenMod.onclick = () => {
       modModal.hidden = false;
@@ -409,6 +355,44 @@ function injectEmotionalBlocks(d){
   host.innerHTML = heroHtml + quotesHtml + sectionsHtml;
 }
 
+/* ---------------- Stats UI ---------------- */
+const liveStats = { visits:0, comments:0, reactions:0, candles:0 };
+
+function renderStats(){
+  const sec = document.getElementById("statsSection");
+  const grid = document.getElementById("statsGrid");
+  if (!sec || !grid) return;
+
+  sec.hidden = false;
+
+  const cards = [
+    { k: "Visitas",    v: `${liveStats.visits}`,    s: "Personas que han acompañado este recuerdo" },
+    { k: "Recuerdos",  v: `${liveStats.comments}`,  s: "Mensajes dejados con cariño" },
+    { k: "Velas",      v: `${liveStats.candles}`,   s: "Velas encendidas en este memorial" },
+    { k: "Reacciones", v: `${liveStats.reactions}`, s: "Gestos de amor en las fotos" }
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="mStat">
+      <p class="k">${escapeHtml(c.k)}</p>
+      <p class="v">${escapeHtml(c.v)}</p>
+      <p class="s">${escapeHtml(c.s)}</p>
+    </div>
+  `).join("");
+}
+
+function setupStatsLive(memorialId){
+  onSnapshot(statsDoc(memorialId), (snap) => {
+    const data = snap.exists() ? snap.data() : {};
+    liveStats.visits = Number(data.visits || 0);
+    liveStats.comments = Number(data.comments || 0);
+    liveStats.reactions = Number(data.reactions || 0);
+    renderStats();
+  }, (err) => {
+    console.warn("Stats snapshot error:", err?.code || err);
+  });
+}
+
 /* ---------------- Velas globales ---------------- */
 function candleBurst(){
   const host = document.getElementById("extraBlocks") || document.body;
@@ -435,7 +419,7 @@ function setupGlobalCandles(memorialId){
     candlesCol(memorialId),
     (snap) => {
       out.textContent = `🕯️ ${snap.size} velas encendidas`;
-      statsState.candles = snap.size;
+      liveStats.candles = snap.size;
       renderStats();
     },
     (err) => { console.warn("Candles snapshot error:", err?.code || err); }
@@ -484,6 +468,7 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
+
   let canSeeHidden = false;
 
   const lb = document.getElementById("lightbox");
@@ -561,6 +546,7 @@ function setupLightboxFirebase(gallery){
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
+    // COMMENTS
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
@@ -573,8 +559,9 @@ function setupLightboxFirebase(gallery){
 
         const rendered = snap.docs
           .map(x => {
-            const c = x.data();
+            const c = x.data() || {};
             const hidden = !!c.hidden;
+
             if (hidden && !canSeeHidden) return "";
 
             const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
@@ -596,9 +583,15 @@ function setupLightboxFirebase(gallery){
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
       },
-      (err) => console.warn("comments snapshot error:", err?.code || err)
+      (err) => {
+        console.warn("comments snapshot error:", err?.code || err);
+        if (commentsList){
+          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
+        }
+      }
     );
 
+    // REACTIONS
     unsubReactions = onSnapshot(
       reactionsCol(memorialId, i),
       (snap) => {
@@ -613,7 +606,9 @@ function setupLightboxFirebase(gallery){
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
       },
-      (err) => console.warn("reactions snapshot error:", err?.code || err)
+      (err) => {
+        console.warn("reactions snapshot error:", err?.code || err);
+      }
     );
   }
 
@@ -685,7 +680,7 @@ function setupLightboxFirebase(gallery){
           hidden: false
         });
 
-        // ✅ stats: comments +1
+        // +1 comments
         await setDoc(statsDoc(memorialId), {
           comments: increment(1),
           updatedAt: serverTimestamp()
@@ -710,23 +705,41 @@ function setupLightboxFirebase(gallery){
 
       try{
         const snap = await getDoc(ref);
-        const data = snap.exists() ? snap.data() : {};
-        const next = (Number(data[emo] || 0) === 1) ? 0 : 1;
+        const data = snap.exists() ? (snap.data() || {}) : {};
+        const cur = Number(data[emo] || 0);
+        const next = (cur === 1) ? 0 : 1;
 
         await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
 
-        // ✅ stats: reactions +1 / -1
-        const delta = next === 1 ? 1 : -1;
-        await setDoc(statsDoc(memorialId), {
-          reactions: increment(delta),
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-
+        // Ajuste de contador global: +1 si pasa 0->1, -1 si 1->0
+        const delta = next - cur;
+        if (delta !== 0){
+          await setDoc(statsDoc(memorialId), {
+            reactions: increment(delta),
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
       }catch(err){
         showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
       }
     });
   });
+}
+
+/* ---------------- Anniversary mode ---------------- */
+function applyAnniversary(d){
+  // default: 06-08 (6 de agosto)
+  const mmdd = (d?.anniversary || "08-06").trim(); // "MM-DD"
+  const today = new Date();
+  const t = String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
+
+  if (t !== mmdd) return;
+
+  document.body.classList.add("anniversary");
+  const banner = document.getElementById("anniversaryBanner");
+  if (banner){
+    banner.hidden = false;
+  }
 }
 
 /* ---------------- Main ---------------- */
@@ -736,18 +749,21 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
 
-  // si venías desde redirect
+  // redirect login
   try{ await getRedirectResult(auth); }catch(e){}
 
   const memorialId = getMemorialId();
 
-  // ✅ stats + visita
+  // stats
+  await bumpVisit(memorialId);
   setupStatsLive(memorialId);
-  bumpVisit(memorialId);
 
+  // data.json
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
   const d = await res.json();
+
+  applyAnniversary(d);
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
@@ -755,10 +771,11 @@ async function loadMemorial(){
   if (cover){
     cover.src = d.cover || "";
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
+  }
 
-    // Si tienes coverBg en tu HTML, también lo seteamos
-    const coverBg = document.getElementById("coverBg");
-    if (coverBg) coverBg.src = d.cover || "";
+  const coverBg = document.getElementById("coverBg");
+  if (coverBg){
+    coverBg.src = d.cover || "";
   }
 
   const nameEl = document.getElementById("name");
@@ -770,7 +787,7 @@ async function loadMemorial(){
 
   injectEmotionalBlocks(d);
 
-  // galería
+  // gallery
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
@@ -800,13 +817,12 @@ async function loadMemorial(){
     if (ap) ap.src = d.audio.src;
   }
 
-  // lightbox + velas (velas alimenta statsState.candles)
+  // firebase features
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
+
+  // primer render stats (por si aún no llega snapshot)
+  renderStats();
 }
 
-loadMemorial().catch((e) => {
-  console.error(e);
-  // si quieres ver el error arriba, descomenta:
-  // alert("Error en memorial-page.js: " + (e?.message || e));
-});
+loadMemorial().catch(console.error);
