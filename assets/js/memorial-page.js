@@ -1,7 +1,10 @@
+// memorial-page.js (REEMPLAZAR COMPLETO)
+// Requiere: firebase-config.js exportando firebaseConfig
+// Firebase v10.12.5 (CDN)
+
 import { firebaseConfig } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
 import {
   getAuth,
   GoogleAuthProvider,
@@ -25,7 +28,8 @@ import {
   query,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ---------------- Firebase init ---------------- */
@@ -63,7 +67,7 @@ function roleLabel(role){
 
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s){
-  return String(s)
+  return String(s ?? "")
     .replaceAll("&","&amp;")
     .replaceAll("<","&lt;")
     .replaceAll(">","&gt;")
@@ -71,17 +75,13 @@ function escapeHtml(s){
     .replaceAll("'","&#039;");
 }
 
-/**
- * Soporta:
- * - /memoriales/{ID}/
- * - /memorials/{ID}/
- * - querystring ?mid=Camilo-Fuentes
- */
 function getMemorialId(){
+  // 1) query param ?mid=
   const url = new URL(location.href);
   const mid = url.searchParams.get("mid");
   if (mid) return mid;
 
+  // 2) /memoriales/{id}/...
   const parts = location.pathname.split("/").filter(Boolean);
 
   const idxEs = parts.indexOf("memoriales");
@@ -90,6 +90,7 @@ function getMemorialId(){
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
+  // 3) fallback (penúltimo)
   if (parts.length >= 2) return parts[parts.length - 2];
   return "memorial";
 }
@@ -109,6 +110,76 @@ function candleDoc(memorialId, uid){
   return doc(db, "memorials", memorialId, "candles", uid);
 }
 
+/* Stats */
+function statsDoc(memorialId){
+  return doc(db, "memorials", memorialId, "meta", "stats");
+}
+
+async function bumpVisit(memorialId){
+  // 1 visita por dispositivo por día (evita inflar)
+  const key = `visit_${memorialId}_${new Date().toISOString().slice(0,10)}`;
+  if (localStorage.getItem(key)) return;
+  localStorage.setItem(key, "1");
+
+  try{
+    await setDoc(statsDoc(memorialId), {
+      visits: increment(1),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }catch(e){
+    console.warn("No se pudo registrar visita:", e?.code || e);
+  }
+}
+
+// Estado de stats en memoria (para render consistente)
+const statsState = {
+  visits: 0,
+  comments: 0,
+  reactions: 0,
+  candles: 0
+};
+
+function renderStats(){
+  const sec = document.getElementById("statsSection");
+  const grid = document.getElementById("statsGrid");
+  if (!sec || !grid) return;
+
+  sec.hidden = false;
+
+  const { visits, comments, reactions, candles } = statsState;
+
+  const cards = [
+    { k: "Visitas", v: `${visits}`, s: "Personas que han acompañado este recuerdo" },
+    { k: "Recuerdos", v: `${comments}`, s: "Mensajes dejados con cariño" },
+    { k: "Velas", v: `${candles}`, s: "Velas encendidas en este memorial" },
+    { k: "Reacciones", v: `${reactions}`, s: "Gestos de amor en las fotos" }
+  ];
+
+  grid.innerHTML = cards.map(c => `
+    <div class="mStat">
+      <p class="k">${escapeHtml(c.k)}</p>
+      <p class="v">${escapeHtml(c.v)}</p>
+      <p class="s">${escapeHtml(c.s)}</p>
+    </div>
+  `).join("");
+}
+
+function setupStatsLive(memorialId){
+  onSnapshot(
+    statsDoc(memorialId),
+    (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      statsState.visits = Number(data.visits || 0);
+      statsState.comments = Number(data.comments || 0);
+      statsState.reactions = Number(data.reactions || 0);
+      // candles lo setea su propio listener
+      renderStats();
+    },
+    (err) => console.warn("Stats snapshot error:", err?.code || err)
+  );
+}
+
+/* UI helpers */
 function showAuthError(msg){
   const box = document.getElementById("authError");
   if (!box) return;
@@ -218,17 +289,18 @@ function setupUidRow(){
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
-  const modEntry = document.getElementById("modEntry");   // botón “🛡️ Moderación”
+  const modEntry = document.getElementById("modEntry");     // botón “🛡️ Moderación”
   const modModal = document.getElementById("modModal");
   const btnOpenMod = document.getElementById("btnOpenMod");
   const modClose = document.getElementById("modClose");
 
-  const modPanel = document.getElementById("modPanel");   // panel admin (promover / reportes / bloqueados)
-  const roleText = document.getElementById("modRoleText"); // ✅ aquí mostramos el rol
+  const modPanel = document.getElementById("modPanel");     // panel admin (promover / etc)
+  const roleText = document.getElementById("modRoleText");  // texto rol
 
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
 
+  // abrir/cerrar modal de moderación (si existe)
   if (btnOpenMod && modModal){
     btnOpenMod.onclick = () => {
       modModal.hidden = false;
@@ -250,7 +322,6 @@ function setupModeratorEntry(){
     });
   }
 
-  // ✅ Indicador de rol: también lo mostramos aunque NO sea mod/admin
   onAuthStateChanged(auth, async (user) => {
     if (!user){
       if (modEntry) modEntry.hidden = true;
@@ -267,7 +338,6 @@ function setupModeratorEntry(){
       role = "none";
     }
 
-    // Mostrar siempre el rol si existe el elemento
     if (roleText){
       roleText.textContent = `Rol: ${roleLabel(role)}`;
     }
@@ -363,7 +433,11 @@ function setupGlobalCandles(memorialId){
 
   onSnapshot(
     candlesCol(memorialId),
-    (snap) => { out.textContent = `🕯️ ${snap.size} velas encendidas`; },
+    (snap) => {
+      out.textContent = `🕯️ ${snap.size} velas encendidas`;
+      statsState.candles = snap.size;
+      renderStats();
+    },
     (err) => { console.warn("Candles snapshot error:", err?.code || err); }
   );
 
@@ -410,7 +484,6 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
-
   let canSeeHidden = false;
 
   const lb = document.getElementById("lightbox");
@@ -502,7 +575,6 @@ function setupLightboxFirebase(gallery){
           .map(x => {
             const c = x.data();
             const hidden = !!c.hidden;
-
             if (hidden && !canSeeHidden) return "";
 
             const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
@@ -523,7 +595,8 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      }
+      },
+      (err) => console.warn("comments snapshot error:", err?.code || err)
     );
 
     unsubReactions = onSnapshot(
@@ -539,7 +612,8 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      }
+      },
+      (err) => console.warn("reactions snapshot error:", err?.code || err)
     );
   }
 
@@ -610,6 +684,13 @@ function setupLightboxFirebase(gallery){
           createdAt: serverTimestamp(),
           hidden: false
         });
+
+        // ✅ stats: comments +1
+        await setDoc(statsDoc(memorialId), {
+          comments: increment(1),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
         if (commentText) commentText.value = "";
       }catch(err){
         showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
@@ -631,7 +712,16 @@ function setupLightboxFirebase(gallery){
         const snap = await getDoc(ref);
         const data = snap.exists() ? snap.data() : {};
         const next = (Number(data[emo] || 0) === 1) ? 0 : 1;
+
         await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+
+        // ✅ stats: reactions +1 / -1
+        const delta = next === 1 ? 1 : -1;
+        await setDoc(statsDoc(memorialId), {
+          reactions: increment(delta),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
       }catch(err){
         showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
       }
@@ -646,7 +736,14 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
 
+  // si venías desde redirect
   try{ await getRedirectResult(auth); }catch(e){}
+
+  const memorialId = getMemorialId();
+
+  // ✅ stats + visita
+  setupStatsLive(memorialId);
+  bumpVisit(memorialId);
 
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
@@ -656,10 +753,12 @@ async function loadMemorial(){
 
   const cover = document.getElementById("cover");
   if (cover){
-cover.src = d.cover || "";
-const coverBg = document.getElementById("coverBg");
-if (coverBg) coverBg.src = d.cover || "";
+    cover.src = d.cover || "";
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
+
+    // Si tienes coverBg en tu HTML, también lo seteamos
+    const coverBg = document.getElementById("coverBg");
+    if (coverBg) coverBg.src = d.cover || "";
   }
 
   const nameEl = document.getElementById("name");
@@ -671,6 +770,7 @@ if (coverBg) coverBg.src = d.cover || "";
 
   injectEmotionalBlocks(d);
 
+  // galería
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
@@ -683,6 +783,7 @@ if (coverBg) coverBg.src = d.cover || "";
     `).join("");
   }
 
+  // video/audio
   if (d.video?.youtubeEmbedUrl){
     const vs = document.getElementById("videoSection");
     const vf = document.getElementById("videoFrame");
@@ -699,8 +800,13 @@ if (coverBg) coverBg.src = d.cover || "";
     if (ap) ap.src = d.audio.src;
   }
 
+  // lightbox + velas (velas alimenta statsState.candles)
   setupLightboxFirebase(gallery);
-  setupGlobalCandles(getMemorialId());
+  setupGlobalCandles(memorialId);
 }
 
-loadMemorial().catch(console.error);
+loadMemorial().catch((e) => {
+  console.error(e);
+  // si quieres ver el error arriba, descomenta:
+  // alert("Error en memorial-page.js: " + (e?.message || e));
+});
