@@ -342,4 +342,36 @@ a{color:inherit;text-decoration:none}
     opacity: 0;
   }
 }
+.mCoverWrap{
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  max-height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.10);
+  background: #000;
+}
+
+/* fondo blur */
+.mCoverBg{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;         /* aquí sí puede recortar porque es solo fondo */
+  filter: blur(18px);
+  transform: scale(1.15);    /* para que no se vean bordes del blur */
+  opacity: .55;
+}
+
+/* imagen real (completa) */
+.mCover{
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;       /* aquí NO recorta */
+  object-position: center;
+}
 
