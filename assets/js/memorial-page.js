@@ -656,7 +656,9 @@ async function loadMemorial(){
 
   const cover = document.getElementById("cover");
   if (cover){
-    cover.src = d.cover || "";
+cover.src = d.cover || "";
+const coverBg = document.getElementById("coverBg");
+if (coverBg) coverBg.src = d.cover || "";
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
   }
 
