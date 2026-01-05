@@ -43,14 +43,19 @@ a{color:inherit;text-decoration:none}
 }
 
 .mCover {
-  width: 100%;
-  height: min(60vh, 520px);
-  object-fit: cover;
-  object-position: center top;
-  border-radius: 18px;
-  display: block;
+  position: relative;
 }
 
+.mCover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,.15),
+    rgba(0,0,0,.35)
+  );
+}
 
 .mName{
   font-size:32px;
