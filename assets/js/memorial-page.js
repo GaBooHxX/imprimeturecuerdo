@@ -27,6 +27,7 @@ import {
   onSnapshot,
   serverTimestamp,
   increment
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ---------------- Firebase init ---------------- */
@@ -110,6 +111,16 @@ function statsDoc(memorialId){
   return doc(db, "memorials", memorialId, "meta", "stats");
 }
 
+async function bumpStat(memorialId, field, delta){
+  try{
+    await setDoc(statsDoc(memorialId), {
+      [field]: increment(delta),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }catch(e){
+    console.warn(`No se pudo actualizar stats.${field}:`, e?.code || e);
+  }
+}
 async function bumpVisit(memorialId){
   // 1 visita por dispositivo por día (evita inflar)
   const key = `visit_${memorialId}_${new Date().toISOString().slice(0,10)}`;
@@ -661,37 +672,35 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  if (btnComment){
-    btnComment.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (!user){
-        showAuthError("Debes iniciar sesión para comentar.");
-        return;
-      }
-      const text = (commentText?.value || "").trim();
-      if (!text) return;
+if (btnComment){
+  btnComment.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user){
+      showAuthError("Debes iniciar sesión para comentar.");
+      return;
+    }
 
-      try{
-        await addDoc(commentsCol(memorialId, current), {
-          uid: user.uid,
-          name: user.displayName || "Usuario",
-          text: text.slice(0, 500),
-          createdAt: serverTimestamp(),
-          hidden: false
-        });
+    const text = (commentText?.value || "").trim();
+    if (!text) return;
 
-        // +1 comments
-        await setDoc(statsDoc(memorialId), {
-          comments: increment(1),
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+    try{
+      await addDoc(commentsCol(memorialId, current), {
+        uid: user.uid,
+        name: user.displayName || "Usuario",
+        text: text.slice(0, 500),
+        createdAt: serverTimestamp(),
+        hidden: false
+      });
 
-        if (commentText) commentText.value = "";
-      }catch(err){
-        showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
-      }
-    });
-  }
+      // ✅ contador global de comentarios (en cualquier foto)
+      await bumpStat(memorialId, "comments", 1);
+
+      if (commentText) commentText.value = "";
+    }catch(err){
+      showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
+    }
+  });
+}
 
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -704,27 +713,39 @@ function setupLightboxFirebase(gallery){
       const ref = doc(reactionsCol(memorialId, current), user.uid);
 
       try{
-        const snap = await getDoc(ref);
-        const data = snap.exists() ? (snap.data() || {}) : {};
-        const cur = Number(data[emo] || 0);
-        const next = (cur === 1) ? 0 : 1;
+        document.querySelectorAll(".rBtn").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user){
+      showAuthError("Debes iniciar sesión para reaccionar.");
+      return;
+    }
 
-        await setDoc(ref, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+    const emo = btn.dataset.r;
+    const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
+    const sRef = statsDoc(memorialId);
 
-        // Ajuste de contador global: +1 si pasa 0->1, -1 si 1->0
-        const delta = next - cur;
-        if (delta !== 0){
-          await setDoc(statsDoc(memorialId), {
-            reactions: increment(delta),
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        }
-      }catch(err){
-        showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
-      }
-    });
+    try{
+      await runTransaction(db, async (tx) => {
+        const rs = await tx.get(reactionRef);
+        const data = rs.exists() ? (rs.data() || {}) : {};
+        const prev = Number(data[emo] || 0);
+        const next = (prev === 1) ? 0 : 1;
+
+        // toggle en doc reacción
+        tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+
+        // ✅ delta global
+        const delta = next - prev; // +1 o -1
+        tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
+      });
+
+    }catch(err){
+      showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
+    }
   });
-}
+});
+       
 
 /* ---------------- Anniversary mode ---------------- */
 function applyAnniversary(d){
