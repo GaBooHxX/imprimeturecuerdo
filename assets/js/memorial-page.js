@@ -26,7 +26,7 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
-  increment
+  increment,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -74,10 +74,12 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
+  // 1) query param ?mid=
   const url = new URL(location.href);
   const mid = url.searchParams.get("mid");
   if (mid) return mid;
 
+  // 2) path /memoriales/{id}/ o /memorials/{id}/
   const parts = location.pathname.split("/").filter(Boolean);
 
   const idxEs = parts.indexOf("memoriales");
@@ -86,9 +88,8 @@ function getMemorialId(){
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
-  // fallback
-  if (parts.length >= 1) return parts[parts.length - 1];
-  return "memorial";
+  // 3) fallback: último segmento
+  return parts[parts.length - 1] || "memorial";
 }
 
 function commentsCol(memorialId, photoIndex){
@@ -121,8 +122,9 @@ async function bumpStat(memorialId, field, delta){
     console.warn(`No se pudo actualizar stats.${field}:`, e?.code || e);
   }
 }
+
 async function bumpVisit(memorialId){
-  // 1 visita por dispositivo por día (evita inflar)
+  // 1 visita por dispositivo por día
   const key = `visit_${memorialId}_${new Date().toISOString().slice(0,10)}`;
   if (localStorage.getItem(key)) return;
   localStorage.setItem(key, "1");
@@ -189,20 +191,12 @@ function setupGlobalAuthUI(){
   const btnLogoutMain = document.getElementById("btnLogoutMain");
   const authStatus = document.getElementById("authStatus");
 
-  if (btnLoginMain){
-    btnLoginMain.addEventListener("click", async () => {
-      try{ await loginGoogle(); }catch(e){}
-    });
-  }
-
-  if (btnLogoutMain){
-    btnLogoutMain.addEventListener("click", async () => {
-      showAuthError("");
-      try{ await signOut(auth); }catch(err){
-        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
-      }
-    });
-  }
+  btnLoginMain?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
+  btnLogoutMain?.addEventListener("click", async () => {
+    showAuthError("");
+    try{ await signOut(auth); }
+    catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
+  });
 
   onAuthStateChanged(auth, (user) => {
     if (authStatus){
@@ -243,41 +237,37 @@ function setupUidRow(){
   });
 }
 
-/* ---------------- Mostrar panel MOD/ADMIN + indicador de rol ---------------- */
+/* ---------------- Mostrar panel MOD/ADMIN + rol ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
-  const modEntry = document.getElementById("modEntry");   // botón “🛡️ Moderación”
+  const modEntry = document.getElementById("modEntry");
   const modModal = document.getElementById("modModal");
   const btnOpenMod = document.getElementById("btnOpenMod");
   const modClose = document.getElementById("modClose");
 
-  const modPanel = document.getElementById("modPanel");   // panel admin (promover)
-  const roleText = document.getElementById("modRoleText"); // texto rol
+  const modPanel = document.getElementById("modPanel");
+  const roleText = document.getElementById("modRoleText");
 
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
 
-  if (btnOpenMod && modModal){
-    btnOpenMod.onclick = () => {
-      modModal.hidden = false;
-      document.body.style.overflow = "hidden";
-    };
-  }
-  if (modClose && modModal){
-    modClose.onclick = () => {
+  btnOpenMod && modModal && (btnOpenMod.onclick = () => {
+    modModal.hidden = false;
+    document.body.style.overflow = "hidden";
+  });
+
+  modClose && modModal && (modClose.onclick = () => {
+    modModal.hidden = true;
+    document.body.style.overflow = "";
+  });
+
+  modModal?.addEventListener("click", (e) => {
+    if (e.target === modModal){
       modModal.hidden = true;
       document.body.style.overflow = "";
-    };
-  }
-  if (modModal){
-    modModal.addEventListener("click", (e) => {
-      if (e.target === modModal){
-        modModal.hidden = true;
-        document.body.style.overflow = "";
-      }
-    });
-  }
+    }
+  });
 
   onAuthStateChanged(auth, async (user) => {
     if (!user){
@@ -288,16 +278,10 @@ function setupModeratorEntry(){
     }
 
     let role = "none";
-    try{
-      role = await getRole(memorialId, user.uid);
-    }catch(e){
-      console.warn("getRole error:", e?.code || e);
-      role = "none";
-    }
+    try{ role = await getRole(memorialId, user.uid); }
+    catch(e){ console.warn("getRole error:", e?.code || e); role = "none"; }
 
-    if (roleText){
-      roleText.textContent = `Rol: ${roleLabel(role)}`;
-    }
+    if (roleText) roleText.textContent = `Rol: ${roleLabel(role)}`;
 
     const canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
     const canPromote  = (role === "global-admin" || role === "memorial-admin");
@@ -398,6 +382,7 @@ function setupStatsLive(memorialId){
     liveStats.visits = Number(data.visits || 0);
     liveStats.comments = Number(data.comments || 0);
     liveStats.reactions = Number(data.reactions || 0);
+    // candles lo actualiza su listener
     renderStats();
   }, (err) => {
     console.warn("Stats snapshot error:", err?.code || err);
@@ -572,7 +557,6 @@ function setupLightboxFirebase(gallery){
           .map(x => {
             const c = x.data() || {};
             const hidden = !!c.hidden;
-
             if (hidden && !canSeeHidden) return "";
 
             const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
@@ -633,6 +617,7 @@ function setupLightboxFirebase(gallery){
     unsubReactions = null;
   }
 
+  // abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -657,23 +642,15 @@ function setupLightboxFirebase(gallery){
     if (e.key === "Escape") closeLb();
   });
 
-  if (btnLogin){
-    btnLogin.addEventListener("click", async () => {
-      try{ await loginGoogle(); }catch(e){}
-    });
-  }
+  btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
+  btnLogout?.addEventListener("click", async () => {
+    showAuthError("");
+    try{ await signOut(auth); }
+    catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
+  });
 
-  if (btnLogout){
-    btnLogout.addEventListener("click", async () => {
-      showAuthError("");
-      try{ await signOut(auth); }catch(err){
-        showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`);
-      }
-    });
-  }
-
-if (btnComment){
-  btnComment.addEventListener("click", async () => {
+  // comentar
+  btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
       showAuthError("Debes iniciar sesión para comentar.");
@@ -692,7 +669,7 @@ if (btnComment){
         hidden: false
       });
 
-      // ✅ contador global de comentarios (en cualquier foto)
+      // contador global de comentarios
       await bumpStat(memorialId, "comments", 1);
 
       if (commentText) commentText.value = "";
@@ -700,8 +677,8 @@ if (btnComment){
       showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
     }
   });
-}
 
+  // reacciones (UNA SOLA VEZ, sin duplicar listeners)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -709,58 +686,43 @@ if (btnComment){
         showAuthError("Debes iniciar sesión para reaccionar.");
         return;
       }
+
       const emo = btn.dataset.r;
-      const ref = doc(reactionsCol(memorialId, current), user.uid);
+      const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
+      const sRef = statsDoc(memorialId);
 
       try{
-        document.querySelectorAll(".rBtn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    const user = auth.currentUser;
-    if (!user){
-      showAuthError("Debes iniciar sesión para reaccionar.");
-      return;
-    }
+        await runTransaction(db, async (tx) => {
+          const rs = await tx.get(reactionRef);
+          const data = rs.exists() ? (rs.data() || {}) : {};
+          const prev = Number(data[emo] || 0);
+          const next = (prev === 1) ? 0 : 1;
 
-    const emo = btn.dataset.r;
-    const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
-    const sRef = statsDoc(memorialId);
+          // toggle en doc reacción
+          tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
 
-    try{
-      await runTransaction(db, async (tx) => {
-        const rs = await tx.get(reactionRef);
-        const data = rs.exists() ? (rs.data() || {}) : {};
-        const prev = Number(data[emo] || 0);
-        const next = (prev === 1) ? 0 : 1;
-
-        // toggle en doc reacción
-        tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
-
-        // ✅ delta global
-        const delta = next - prev; // +1 o -1
-        tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
-      });
-
-    }catch(err){
-      showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
-    }
+          // delta global
+          const delta = next - prev; // +1 o -1
+          tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
+        });
+      }catch(err){
+        showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
+      }
+    });
   });
-});
-       
+}
 
 /* ---------------- Anniversary mode ---------------- */
 function applyAnniversary(d){
-  // default: 06-08 (6 de agosto)
-  const mmdd = (d?.anniversary || "08-06").trim(); // "MM-DD"
+  // default 06-08 (6 de agosto) => "MM-DD"
+  const mmdd = (d?.anniversary || "08-06").trim();
   const today = new Date();
   const t = String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
-
   if (t !== mmdd) return;
 
   document.body.classList.add("anniversary");
   const banner = document.getElementById("anniversaryBanner");
-  if (banner){
-    banner.hidden = false;
-  }
+  if (banner) banner.hidden = false;
 }
 
 /* ---------------- Main ---------------- */
@@ -770,7 +732,6 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
 
-  // redirect login
   try{ await getRedirectResult(auth); }catch(e){}
 
   const memorialId = getMemorialId();
@@ -788,17 +749,18 @@ async function loadMemorial(){
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
+  // cover + blur
   const cover = document.getElementById("cover");
   if (cover){
     cover.src = d.cover || "";
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
   }
-
   const coverBg = document.getElementById("coverBg");
   if (coverBg){
     coverBg.src = d.cover || "";
   }
 
+  // texts
   const nameEl = document.getElementById("name");
   const datesEl = document.getElementById("dates");
   const bioEl = document.getElementById("bio");
@@ -842,7 +804,7 @@ async function loadMemorial(){
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
-  // primer render stats (por si aún no llega snapshot)
+  // primer render stats
   renderStats();
 }
 
