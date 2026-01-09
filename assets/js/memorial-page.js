@@ -138,6 +138,24 @@ async function bumpVisit(memorialId){
     console.warn("No se pudo registrar visita:", e?.code || e);
   }
 }
+async function ensureStats(memorialId){
+  const ref = statsDoc(memorialId);
+  try{
+    const snap = await getDoc(ref);
+    if (snap.exists()) return;
+
+    // Crear doc con NÚMEROS reales (cumple reglas create)
+    await setDoc(ref, {
+      visits: 0,
+      comments: 0,
+      reactions: 0,
+      updatedAt: serverTimestamp()
+    });
+  }catch(e){
+    console.warn("No se pudo asegurar stats:", e?.code || e);
+  }
+}
+
 
 /* ---------------- UI errors ---------------- */
 function showAuthError(msg){
@@ -737,8 +755,11 @@ async function loadMemorial(){
   const memorialId = getMemorialId();
 
   // stats
-  await bumpVisit(memorialId);
-  setupStatsLive(memorialId);
+// stats
+await ensureStats(memorialId);
+setupStatsLive(memorialId);
+await bumpVisit(memorialId);
+
 
   // data.json
   const res = await fetch("data.json", { cache: "no-store" });
