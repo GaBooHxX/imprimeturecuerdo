@@ -12,6 +12,26 @@
 
 <body>
 
+  <!-- Bienvenida solemne -->
+<section class="welcome" id="welcomeGate" hidden>
+  <div class="welcomeCard" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <p class="welcomeKicker">Bienvenido</p>
+    <h2 id="welcomeTitle" class="welcomeTitle">Gracias por visitar este memorial</h2>
+    <p class="welcomeText">
+      Este espacio fue creado para honrar una vida y acompañar con respeto.
+      Si deseas, puedes dejar un recuerdo o una reacción con cariño.
+    </p>
+
+    <div class="welcomeActions">
+      <button class="btnPrimary" id="welcomeEnter" type="button">Entrar con respeto</button>
+      <button class="btnGhost" id="welcomeSkip" type="button">Continuar</button>
+    </div>
+
+    <p class="welcomeFoot">Gracias por mantener un tono amable y considerado.</p>
+  </div>
+  <div class="welcomeBackdrop" aria-hidden="true"></div>
+</section>
+<!--
   <!-- Barra superior -->
   <header class="mTop">
     <div class="mWrap">
@@ -19,14 +39,23 @@
       <strong>Imprime tu Recuerdo</strong>
     </div>
   </header>
-
+-->
   <main class="mWrap">
 
     <!-- Portada -->
-<div class="mCoverWrap" id="coverWrap">
-  <img id="coverBg" class="mCoverBg" alt="">
-  <img id="cover" class="mCover" alt="">
+<div class="coverWrap">
+  <img id="coverBg" class="coverBg" alt="" aria-hidden="true">
+  <img id="cover" class="coverImg" alt="">
+
+  <div class="coverShade"></div>
+
+  <div class="coverText">
+    <h1 id="name"></h1>
+    <p id="dates" class="coverDates"></p>
+    <p id="bio" class="coverBio"></p>
+  </div>
 </div>
+
     <!-- Datos principales -->
     <h1 id="name" class="mName"></h1>
     <p id="dates" class="mDates"></p>
