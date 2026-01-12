@@ -525,3 +525,22 @@ img{max-width:100%;display:block}
   padding:10px 12px;
 }
 .cMeta{color: rgba(238,241,247,.70); font-size: 12px; margin-top: 6px}
+/* ===== FIX captions (texto bajo/encima de fotos) ===== */
+.mCap{
+  color: rgba(238,241,247,.92) !important;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+/* Si la caption está dentro del thumbnail, dale fondo para legibilidad */
+.mThumbWrap .mCap{
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,.55);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(6px);
+}
