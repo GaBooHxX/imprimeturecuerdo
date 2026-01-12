@@ -4,27 +4,38 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#06070a" />
   <title>Memorial</title>
 
   <!-- CSS memorial -->
   <link rel="stylesheet" href="../../assets/css/memorial.css" />
 </head>
 
+<body>
+
   <!-- Barra superior -->
   <header class="mTop">
-    <div class="mWrap">
+    <div class="mWrap mTopInner">
       <a href="/" class="mBack">← Inicio</a>
-      <strong>Imprime tu Recuerdo</strong>
+
+      <div class="mBrand">
+        <span class="mBrandDot" aria-hidden="true"></span>
+        <strong>Imprime tu Recuerdo</strong>
+      </div>
+
+      <div class="mTopRight" aria-hidden="true"></div>
     </div>
   </header>
 
   <main class="mWrap">
 
     <!-- Portada -->
-<div class="mCoverWrap" id="coverWrap">
-  <img id="coverBg" class="mCoverBg" alt="">
-  <img id="cover" class="mCover" alt="">
-</div>
+    <div class="mCoverWrap" id="coverWrap">
+      <img id="coverBg" class="mCoverBg" alt="">
+      <img id="cover" class="mCover" alt="">
+      <div class="mCoverShade" aria-hidden="true"></div>
+    </div>
+
     <!-- Datos principales -->
     <h1 id="name" class="mName"></h1>
     <p id="dates" class="mDates"></p>
@@ -47,11 +58,11 @@
           Cerrar sesión
         </button>
       </div>
-      <p class="meta" id="modRoleText" style="margin-top:6px"></p>
 
+      <p class="meta" id="modRoleText" style="margin-top:6px"></p>
       <p id="authError" class="authError" hidden></p>
 
-      <!-- UID (se muestra solo al iniciar sesión) -->
+      <!-- UID -->
       <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
         <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
           <span>Tu UID:</span>
@@ -64,7 +75,7 @@
       </div>
     </section>
 
-    <!-- BOTÓN SOLO PARA MOD/ADMIN (lo muestra JS si corresponde) -->
+    <!-- BOTÓN SOLO PARA MOD/ADMIN -->
     <section id="modEntry" class="mSection" hidden>
       <div class="authRow">
         <div class="authStatus">Herramientas</div>
@@ -75,16 +86,18 @@
 
     <!-- Contenido emocional dinámico -->
     <div id="extraBlocks"></div>
-    
-  <section class="mSection" id="statsSection" hidden>
-  <h2>Huella de cariño</h2>
-  <div class="mDivider"><span>🕯️</span></div>
-  <div class="mStats" id="statsGrid"></div>
-  </section>
+
+    <!-- Stats -->
+    <section class="mSection mSectionSoft" id="statsSection" hidden>
+      <h2>Huella de cariño</h2>
+      <div class="mDivider"><span>🕯️</span></div>
+      <div class="mStats" id="statsGrid"></div>
+    </section>
 
     <!-- Galería -->
     <section class="mSection">
       <h2>Galería</h2>
+      <p class="meta">Toca una fotografía para ver recuerdos y reacciones.</p>
       <div id="gallery" class="mGallery"></div>
     </section>
 
@@ -111,14 +124,22 @@
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
     <div class="lb__wrap">
-      <img id="lbImg" class="lb__img" alt="">
+      <figure class="lb__figure">
+        <img id="lbImg" class="lb__img" alt="">
+        <figcaption class="lb__figcap" id="lbCap" hidden></figcaption>
+      </figure>
 
       <aside class="lb__panel">
         <div class="lb__auth">
-          <div id="userInfo" class="lb__user">Invitado</div>
+          <div>
+            <div class="lb__title">Recuerdo en esta fotografía</div>
+            <div id="userInfo" class="lb__user">Invitado</div>
+          </div>
 
-          <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión con Google</button>
-          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
+          <div class="lb__authBtns">
+            <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión</button>
+            <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
+          </div>
         </div>
 
         <div class="lb__reactions">
@@ -131,10 +152,11 @@
 
         <div class="lb__commentBox">
           <textarea id="commentText" class="lb__text" placeholder="Deja un recuerdo sobre esta fotografía…" maxlength="500" disabled></textarea>
-          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar comentario</button>
+          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar recuerdo</button>
           <div id="commentHint" class="lb__hint">Para comentar y reaccionar debes iniciar sesión.</div>
         </div>
 
+        <div class="lb__commentsTitle">Mensajes</div>
         <div id="commentsList" class="lb__comments"></div>
       </aside>
     </div>
@@ -178,7 +200,7 @@
     </div>
   </div>
 
-  <!-- JS (al final, para que encuentre todos los IDs) -->
+  <!-- JS -->
   <script type="module" src="../../assets/js/memorial-page.js"></script>
   <script type="module" src="../../assets/js/memorial-mod.js"></script>
 
