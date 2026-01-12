@@ -2,216 +2,226 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="robots" content="noindex, nofollow" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Memorial</title>
-
-  <!-- CSS memorial -->
-  <link rel="stylesheet" href="../../assets/css/memorial.css" />
+  <link rel="stylesheet" href="./memorial.css" />
 </head>
 
 <body>
+  <!-- Fondo blur -->
+  <img id="coverBg" class="coverBg" alt="" />
 
-  <!-- Bienvenida solemne -->
-<section class="welcome" id="welcomeGate" hidden>
-  <div class="welcomeCard" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
-    <p class="welcomeKicker">Bienvenido</p>
-    <h2 id="welcomeTitle" class="welcomeTitle">Gracias por visitar este memorial</h2>
-    <p class="welcomeText">
-      Este espacio fue creado para honrar una vida y acompañar con respeto.
-      Si deseas, puedes dejar un recuerdo o una reacción con cariño.
-    </p>
+  <!-- Banner aniversario (opcional) -->
+  <div id="anniversaryBanner" class="anniversaryBanner" hidden>
+    Hoy recordamos con especial cariño.
+  </div>
 
-    <div class="welcomeActions">
-      <button class="btnPrimary" id="welcomeEnter" type="button">Entrar con respeto</button>
-      <button class="btnGhost" id="welcomeSkip" type="button">Continuar</button>
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <a class="brand" href="../../index.html">Imprime tu Recuerdo</a>
     </div>
 
-    <p class="welcomeFoot">Gracias por mantener un tono amable y considerado.</p>
-  </div>
-  <div class="welcomeBackdrop" aria-hidden="true"></div>
-</section>
-<!--
-  <!-- Barra superior -->
-  <header class="mTop">
-    <div class="mWrap">
-      <a href="/" class="mBack">← Inicio</a>
-      <strong>Imprime tu Recuerdo</strong>
+    <div class="topbar__right">
+      <div class="authMini">
+        <span id="authStatus" class="authMini__status">Invitado</span>
+        <button id="btnLoginMain" class="btn btn--ghost" type="button">Iniciar sesión</button>
+        <button id="btnLogoutMain" class="btn btn--ghost" type="button" hidden>Cerrar sesión</button>
+      </div>
     </div>
   </header>
--->
-  <main class="mWrap">
 
-    <!-- Portada -->
-<div class="coverWrap">
-  <img id="coverBg" class="coverBg" alt="" aria-hidden="true">
-  <img id="cover" class="coverImg" alt="">
-
-  <div class="coverShade"></div>
-
-  <div class="coverText">
-    <h1 id="name"></h1>
-    <p id="dates" class="coverDates"></p>
-    <p id="bio" class="coverBio"></p>
-  </div>
-</div>
-
-    <!-- Datos principales -->
-    <h1 id="name" class="mName"></h1>
-    <p id="dates" class="mDates"></p>
-    <p id="bio" class="mBio"></p>
-
-    <!-- Login GLOBAL -->
-    <section class="mSection">
-      <h2>Deja tu recuerdo</h2>
-      <p class="meta">Para comentar y reaccionar en las fotografías, debes iniciar sesión con Google.</p>
-
-      <div class="authRow">
-        <div id="authStatus" class="authStatus">Invitado</div>
-
-        <button id="btnLoginMain" class="gBtn" type="button">
-          <span class="gIcon"></span>
-          <span>Continuar con Google</span>
-        </button>
-
-        <button id="btnLogoutMain" class="gBtn ghost" type="button" hidden>
-          Cerrar sesión
-        </button>
+  <!-- Contenedor principal -->
+  <main class="shell">
+    <!-- Hero -->
+    <section class="heroCard">
+      <div class="heroCard__media">
+        <img id="cover" class="heroCard__img" alt="Foto memorial" />
+        <div class="heroCard__overlay"></div>
       </div>
-      <p class="meta" id="modRoleText" style="margin-top:6px"></p>
 
-      <p id="authError" class="authError" hidden></p>
+      <div class="heroCard__content">
+        <h1 id="name" class="heroCard__title">Nombre</h1>
+        <p id="dates" class="heroCard__dates">Fechas</p>
+        <p id="bio" class="heroCard__bio">Descripción</p>
 
-      <!-- UID (se muestra solo al iniciar sesión) -->
-      <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
-        <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-          <span>Tu UID:</span>
-          <code id="myUid" style="opacity:.9"></code>
+        <div id="authError" class="notice notice--error" hidden></div>
+
+        <div class="heroCard__actions">
+          <!-- MOD entry -->
+          <div id="modEntry" hidden>
+            <button id="btnOpenMod" class="btn btn--soft" type="button">🛡️ Moderación</button>
+          </div>
         </div>
-
-        <button id="copyUid" class="gBtn ghost" type="button">
-          Copiar UID
-        </button>
       </div>
     </section>
 
-    <!-- BOTÓN SOLO PARA MOD/ADMIN (lo muestra JS si corresponde) -->
-    <section id="modEntry" class="mSection" hidden>
-      <div class="authRow">
-        <div class="authStatus">Herramientas</div>
-        <button id="btnOpenMod" class="gBtn" type="button">🛡️ Moderación</button>
+    <!-- Stats -->
+    <section id="statsSection" class="section" hidden>
+      <div class="section__head">
+        <h2 class="section__title">Acompañamiento</h2>
+        <p class="section__sub">Un gesto, un recuerdo, una vela. Cada acción importa.</p>
       </div>
-      <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
+      <div id="statsGrid" class="statsGrid"></div>
     </section>
 
-    <!-- Contenido emocional dinámico -->
-    <div id="extraBlocks"></div>
-    
-  <section class="mSection" id="statsSection" hidden>
-  <h2>Huella de cariño</h2>
-  <div class="mDivider"><span>🕯️</span></div>
-  <div class="mStats" id="statsGrid"></div>
-  </section>
+    <!-- Bloques emocionales -->
+    <section class="section">
+      <div id="extraBlocks" class="blocks"></div>
+    </section>
 
     <!-- Galería -->
-    <section class="mSection">
-      <h2>Galería</h2>
-      <div id="gallery" class="mGallery"></div>
+    <section class="section">
+      <div class="section__head">
+        <h2 class="section__title">Galería</h2>
+        <p class="section__sub">Cada imagen guarda una historia.</p>
+      </div>
+      <div id="gallery" class="gallery"></div>
     </section>
 
     <!-- Video -->
-    <section class="mSection" id="videoSection" hidden>
-      <h2>Video</h2>
-      <div class="mVideo">
-        <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
+    <section id="videoSection" class="section" hidden>
+      <div class="section__head">
+        <h2 class="section__title">Video</h2>
+        <p class="section__sub">Un momento que permanece.</p>
       </div>
+      <div class="videoWrap">
+        <iframe
+          id="videoFrame"
+          class="videoFrame"
+          title="Video memorial"
+          loading="lazy"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allowfullscreen
+        ></iframe>
+      </div>
+      <p class="hint">
+        Si el video no carga, usa formato embed: <span class="mono">https://www.youtube-nocookie.com/embed/ID</span>
+      </p>
     </section>
 
     <!-- Audio -->
-    <section class="mSection" id="audioSection" hidden>
-      <h2>Audio</h2>
-      <audio id="audioPlayer" controls style="width:100%"></audio>
+    <section id="audioSection" class="section" hidden>
+      <div class="section__head">
+        <h2 class="section__title">Audio</h2>
+        <p class="section__sub">Una voz, una canción, un recuerdo.</p>
+      </div>
+      <audio id="audioPlayer" class="audio" controls preload="none"></audio>
     </section>
 
+    <!-- Pie -->
+    <footer class="footer">
+      <div class="footer__inner">
+        <div class="footer__left">
+          <div class="small">Con respeto y cariño.</div>
+        </div>
+      </div>
+    </footer>
   </main>
 
-  <!-- ===================== -->
-  <!-- LIGHTBOX PRO -->
-  <!-- ===================== -->
+  <!-- Lightbox -->
   <div id="lightbox" class="lb" hidden>
-    <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
+    <div class="lb__panel" role="dialog" aria-modal="true">
+      <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">✕</button>
 
-    <div class="lb__wrap">
-      <img id="lbImg" class="lb__img" alt="">
-
-      <aside class="lb__panel">
-        <div class="lb__auth">
-          <div id="userInfo" class="lb__user">Invitado</div>
-
-          <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión con Google</button>
-          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
+      <div class="lb__grid">
+        <div class="lb__media">
+          <img id="lbImg" class="lb__img" alt="Foto" />
         </div>
 
-        <div class="lb__reactions">
-          <button class="rBtn" data-r="❤️" type="button" disabled>❤️ <span id="t_heart">0</span></button>
-          <button class="rBtn" data-r="🙏" type="button" disabled>🙏 <span id="t_pray">0</span></button>
-          <button class="rBtn" data-r="🕯️" type="button" disabled>🕯️ <span id="t_candle">0</span></button>
-          <button class="rBtn" data-r="🌟" type="button" disabled>🌟 <span id="t_star">0</span></button>
-          <button class="rBtn" data-r="😢" type="button" disabled>😢 <span id="t_sad">0</span></button>
-        </div>
+        <div class="lb__side">
+          <div class="lb__auth">
+            <div class="lb__who">
+              <div class="small">Estado:</div>
+              <div id="userInfo" class="strong">Invitado</div>
+            </div>
 
-        <div class="lb__commentBox">
-          <textarea id="commentText" class="lb__text" placeholder="Deja un recuerdo sobre esta fotografía…" maxlength="500" disabled></textarea>
-          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar comentario</button>
-          <div id="commentHint" class="lb__hint">Para comentar y reaccionar debes iniciar sesión.</div>
-        </div>
-
-        <div id="commentsList" class="lb__comments"></div>
-      </aside>
-    </div>
-  </div>
-
-  <!-- ===================== -->
-  <!-- MODAL MODERACIÓN -->
-  <!-- ===================== -->
-  <div id="modModal" class="lb" hidden>
-    <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
-
-    <div class="lb__wrap" style="grid-template-columns:1fr;">
-      <aside class="lb__panel">
-        <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
-
-        <div class="authRow" style="margin-bottom:10px">
-          <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
-
-          <label class="lb__hint" style="display:flex; gap:8px; align-items:center">
-            <input type="checkbox" id="modShowHidden">
-            Mostrar ocultos
-          </label>
-        </div>
-
-        <div style="border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px; background:rgba(255,255,255,.03); margin-bottom:12px">
-          <h3 style="margin:0 0 8px">Hacer moderador (1 click)</h3>
-          <p class="lb__hint" style="margin-top:0">Pega el UID del usuario (primero debe iniciar sesión para tener UID).</p>
-
-          <div class="authRow">
-            <input id="promoteUid" placeholder="UID del usuario" style="flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.03); color:inherit">
-            <button id="btnMakeMod" class="lb__btn primary" type="button">Hacer moderador</button>
-            <button id="btnRemoveMod" class="lb__btn ghost" type="button">Quitar moderador</button>
+            <div class="lb__authBtns">
+              <button id="btnLogin" class="btn btn--ghost" type="button">Iniciar sesión</button>
+              <button id="btnLogout" class="btn btn--ghost" type="button" hidden>Cerrar sesión</button>
+            </div>
           </div>
 
-          <div class="lb__hint" id="promoteMsg" style="margin-top:10px"></div>
-        </div>
+          <div class="lb__box">
+            <h3 class="lb__h">Reacciones</h3>
+            <div class="reactRow">
+              <button class="rBtn" type="button" data-r="❤️"><span>❤️</span> <b id="t_heart">0</b></button>
+              <button class="rBtn" type="button" data-r="🙏"><span>🙏</span> <b id="t_pray">0</b></button>
+              <button class="rBtn" type="button" data-r="🕯️"><span>🕯️</span> <b id="t_candle">0</b></button>
+              <button class="rBtn" type="button" data-r="🌟"><span>🌟</span> <b id="t_star">0</b></button>
+              <button class="rBtn" type="button" data-r="😢"><span>😢</span> <b id="t_sad">0</b></button>
+            </div>
+            <p class="hint">Puedes reaccionar con un gesto (toggle).</p>
+          </div>
 
-        <h3 style="margin:10px 0 8px">Comentarios (ocultar/mostrar)</h3>
-        <div id="modList" class="lb__comments"></div>
-      </aside>
+          <div class="lb__box">
+            <h3 class="lb__h">Deja tu recuerdo</h3>
+            <p id="commentHint" class="hint">Para comentar, inicia sesión con Google.</p>
+
+            <div class="commentComposer">
+              <textarea id="commentText" rows="3" maxlength="500" placeholder="Escribe un mensaje con respeto..." disabled></textarea>
+              <button id="btnComment" class="btn btn--primary" type="button" disabled>Publicar</button>
+            </div>
+          </div>
+
+          <div class="lb__box">
+            <h3 class="lb__h">Recuerdos en esta foto</h3>
+            <div id="commentsList" class="commentsList"></div>
+          </div>
+
+          <!-- UID row -->
+          <div id="uidRow" class="uidRow" hidden>
+            <div class="uidRow__left">
+              <div class="small">Tu UID:</div>
+              <div id="myUid" class="uidRow__uid mono"></div>
+            </div>
+            <button id="copyUid" class="btn btn--soft" type="button">Copiar UID</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- JS (al final, para que encuentre todos los IDs) -->
-  <script type="module" src="../../assets/js/memorial-page.js"></script>
-  <script type="module" src="../../assets/js/memorial-mod.js"></script>
+  <!-- Modal MOD -->
+  <div id="modModal" class="modal" hidden>
+    <div class="modal__panel" role="dialog" aria-modal="true">
+      <div class="modal__head">
+        <div>
+          <div class="modal__title">Moderación</div>
+          <div id="modRoleText" class="small"></div>
+        </div>
+        <button id="modClose" class="btn btn--ghost" type="button">Cerrar</button>
+      </div>
 
+      <div class="modal__body">
+        <div id="modPanel" hidden class="notice notice--info">
+          Panel de administración disponible (según rol).
+        </div>
+
+        <div class="hint">
+          La moderación (ocultar comentarios) se gestiona desde Firestore según reglas.
+        </div>
+      </div>
+    </div>
+    <div class="modal__backdrop"></div>
+  </div>
+
+  <!-- Welcome Gate -->
+  <div id="welcomeGate" class="welcome" hidden>
+    <div class="welcome__panel">
+      <div class="welcome__title">Bienvenido/a</div>
+      <p class="welcome__text">
+        Este es un espacio de recuerdo y respeto. Te invitamos a acompañar con cariño y palabras cuidadosas.
+      </p>
+      <div class="welcome__btns">
+        <button id="welcomeEnter" class="btn btn--primary" type="button">Ingresar</button>
+        <button id="welcomeSkip" class="btn btn--ghost" type="button">Continuar</button>
+      </div>
+      <div class="small">Gracias por tu visita.</div>
+    </div>
+    <div class="welcomeBackdrop"></div>
+  </div>
+
+  <script type="module" src="./memorial-page.js"></script>
 </body>
 </html>
