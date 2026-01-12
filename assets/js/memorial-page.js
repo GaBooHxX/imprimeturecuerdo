@@ -74,12 +74,12 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
-  // 1) query param ?mid=
+  // 1) ?mid=
   const url = new URL(location.href);
   const mid = url.searchParams.get("mid");
   if (mid) return mid;
 
-  // 2) path /memoriales/{id}/ o /memorials/{id}/
+  // 2) /memoriales/{id}/ o /memorials/{id}/
   const parts = location.pathname.split("/").filter(Boolean);
 
   const idxEs = parts.indexOf("memoriales");
@@ -99,7 +99,7 @@ function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
 }
 
-/* Velas globales */
+/* ---------------- Velas globales ---------------- */
 function candlesCol(memorialId){
   return collection(db, "memorials", memorialId, "candles");
 }
@@ -107,19 +107,26 @@ function candleDoc(memorialId, uid){
   return doc(db, "memorials", memorialId, "candles", uid);
 }
 
-/* Stats */
+/* ---------------- Stats ---------------- */
 function statsDoc(memorialId){
   return doc(db, "memorials", memorialId, "meta", "stats");
 }
 
-async function bumpStat(memorialId, field, delta){
+async function ensureStats(memorialId){
+  const ref = statsDoc(memorialId);
   try{
-    await setDoc(statsDoc(memorialId), {
-      [field]: increment(delta),
+    const snap = await getDoc(ref);
+    if (snap.exists()) return;
+
+    // crea doc (cumple reglas: números)
+    await setDoc(ref, {
+      visits: 0,
+      comments: 0,
+      reactions: 0,
       updatedAt: serverTimestamp()
-    }, { merge: true });
+    });
   }catch(e){
-    console.warn(`No se pudo actualizar stats.${field}:`, e?.code || e);
+    console.warn("No se pudo asegurar stats:", e?.code || e);
   }
 }
 
@@ -138,24 +145,17 @@ async function bumpVisit(memorialId){
     console.warn("No se pudo registrar visita:", e?.code || e);
   }
 }
-async function ensureStats(memorialId){
-  const ref = statsDoc(memorialId);
-  try{
-    const snap = await getDoc(ref);
-    if (snap.exists()) return;
 
-    // Crear doc con NÚMEROS reales (cumple reglas create)
-    await setDoc(ref, {
-      visits: 0,
-      comments: 0,
-      reactions: 0,
+async function bumpStat(memorialId, field, delta){
+  try{
+    await setDoc(statsDoc(memorialId), {
+      [field]: increment(delta),
       updatedAt: serverTimestamp()
-    });
+    }, { merge: true });
   }catch(e){
-    console.warn("No se pudo asegurar stats:", e?.code || e);
+    console.warn(`No se pudo actualizar stats.${field}:`, e?.code || e);
   }
 }
-
 
 /* ---------------- UI errors ---------------- */
 function showAuthError(msg){
@@ -255,37 +255,17 @@ function setupUidRow(){
   });
 }
 
-/* ---------------- Mostrar panel MOD/ADMIN + rol ---------------- */
+/* ---------------- Mostrar MOD/ADMIN + rol (solo indicador) ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
   const modEntry = document.getElementById("modEntry");
-  const modModal = document.getElementById("modModal");
-  const btnOpenMod = document.getElementById("btnOpenMod");
-  const modClose = document.getElementById("modClose");
-
   const modPanel = document.getElementById("modPanel");
   const roleText = document.getElementById("modRoleText");
 
+  // Nota: el modal real lo maneja mod.js, aquí solo ocultamos/mostramos el acceso si existe.
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
-
-  btnOpenMod && modModal && (btnOpenMod.onclick = () => {
-    modModal.hidden = false;
-    document.body.style.overflow = "hidden";
-  });
-
-  modClose && modModal && (modClose.onclick = () => {
-    modModal.hidden = true;
-    document.body.style.overflow = "";
-  });
-
-  modModal?.addEventListener("click", (e) => {
-    if (e.target === modModal){
-      modModal.hidden = true;
-      document.body.style.overflow = "";
-    }
-  });
 
   onAuthStateChanged(auth, async (user) => {
     if (!user){
@@ -297,7 +277,7 @@ function setupModeratorEntry(){
 
     let role = "none";
     try{ role = await getRole(memorialId, user.uid); }
-    catch(e){ console.warn("getRole error:", e?.code || e); role = "none"; }
+    catch(e){ role = "none"; }
 
     if (roleText) roleText.textContent = `Rol: ${roleLabel(role)}`;
 
@@ -400,7 +380,6 @@ function setupStatsLive(memorialId){
     liveStats.visits = Number(data.visits || 0);
     liveStats.comments = Number(data.comments || 0);
     liveStats.reactions = Number(data.reactions || 0);
-    // candles lo actualiza su listener
     renderStats();
   }, (err) => {
     console.warn("Stats snapshot error:", err?.code || err);
@@ -453,7 +432,6 @@ function setupGlobalCandles(memorialId){
       const snap = await getDoc(ref);
       btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
     }catch(e){
-      console.warn("getDoc candle error:", e?.code || e);
       btn.textContent = "🕯️ Encender vela";
     }
 
@@ -604,7 +582,7 @@ function setupLightboxFirebase(gallery){
       }
     );
 
-    // REACTIONS
+    // REACTIONS (conteo por foto)
     unsubReactions = onSnapshot(
       reactionsCol(memorialId, i),
       (snap) => {
@@ -696,7 +674,7 @@ function setupLightboxFirebase(gallery){
     }
   });
 
-  // reacciones (UNA SOLA VEZ, sin duplicar listeners)
+  // reacciones (y contador global reactions con transacción)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -716,10 +694,8 @@ function setupLightboxFirebase(gallery){
           const prev = Number(data[emo] || 0);
           const next = (prev === 1) ? 0 : 1;
 
-          // toggle en doc reacción
           tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
 
-          // delta global
           const delta = next - prev; // +1 o -1
           tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
         });
@@ -732,7 +708,7 @@ function setupLightboxFirebase(gallery){
 
 /* ---------------- Anniversary mode ---------------- */
 function applyAnniversary(d){
-  // default 06-08 (6 de agosto) => "MM-DD"
+  // default 08-06 (6 de agosto) => "MM-DD"
   const mmdd = (d?.anniversary || "08-06").trim();
   const today = new Date();
   const t = String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
@@ -741,6 +717,33 @@ function applyAnniversary(d){
   document.body.classList.add("anniversary");
   const banner = document.getElementById("anniversaryBanner");
   if (banner) banner.hidden = false;
+}
+
+/* ---------------- Welcome gate ---------------- */
+function setupWelcomeGate(memorialId){
+  const gate = document.getElementById("welcomeGate");
+  const enter = document.getElementById("welcomeEnter");
+  const skip = document.getElementById("welcomeSkip");
+  if (!gate || !enter || !skip) return;
+
+  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
+  if (localStorage.getItem(key)) return;
+
+  gate.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    localStorage.setItem(key, "1");
+    gate.hidden = true;
+    document.body.style.overflow = "";
+  };
+
+  enter.addEventListener("click", close);
+  skip.addEventListener("click", close);
+
+  gate.addEventListener("click", (e) => {
+    if (e.target?.classList?.contains("welcomeBackdrop")) close();
+  });
 }
 
 /* ---------------- Main ---------------- */
@@ -754,12 +757,13 @@ async function loadMemorial(){
 
   const memorialId = getMemorialId();
 
-  // stats
-// stats
-await ensureStats(memorialId);
-setupStatsLive(memorialId);
-await bumpVisit(memorialId);
+  // welcome
+  setupWelcomeGate(memorialId);
 
+  // stats
+  await ensureStats(memorialId);
+  await bumpVisit(memorialId);
+  setupStatsLive(memorialId);
 
   // data.json
   const res = await fetch("data.json", { cache: "no-store" });
@@ -810,7 +814,7 @@ await bumpVisit(memorialId);
     const vf = document.getElementById("videoFrame");
     if (vs) vs.hidden = false;
     if (vf){
-      vf.src = d.video.youtubeEmbedUrl;
+      vf.src = d.video.youtubeEmbedUrl; // usa /embed/ (no m.youtube.com)
       vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     }
   }
@@ -825,34 +829,7 @@ await bumpVisit(memorialId);
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
-  // primer render stats
   renderStats();
 }
-function setupWelcomeGate(memorialId){
-  const gate = document.getElementById("welcomeGate");
-  const enter = document.getElementById("welcomeEnter");
-  const skip = document.getElementById("welcomeSkip");
-  if (!gate || !enter || !skip) return;
-
-  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
-  if (localStorage.getItem(key)) return;
-
-  gate.hidden = false;
-  document.body.style.overflow = "hidden";
-
-  const close = () => {
-    localStorage.setItem(key, "1");
-    gate.hidden = true;
-    document.body.style.overflow = "";
-  };
-
-  enter.addEventListener("click", close);
-  skip.addEventListener("click", close);
-
-  gate.addEventListener("click", (e) => {
-    if (e.target?.classList?.contains("welcomeBackdrop")) close();
-  });
-}
-setupWelcomeGate(memorialId);
 
 loadMemorial().catch(console.error);
