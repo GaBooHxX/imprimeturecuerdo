@@ -74,12 +74,10 @@ function escapeHtml(s){
 }
 
 function getMemorialId(){
-  // 1) ?mid=
   const url = new URL(location.href);
   const mid = url.searchParams.get("mid");
   if (mid) return mid;
 
-  // 2) /memoriales/{id}/ o /memorials/{id}/
   const parts = location.pathname.split("/").filter(Boolean);
 
   const idxEs = parts.indexOf("memoriales");
@@ -88,7 +86,6 @@ function getMemorialId(){
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
-  // 3) fallback: último segmento
   return parts[parts.length - 1] || "memorial";
 }
 
@@ -118,7 +115,6 @@ async function ensureStats(memorialId){
     const snap = await getDoc(ref);
     if (snap.exists()) return;
 
-    // crea doc (cumple reglas: números)
     await setDoc(ref, {
       visits: 0,
       comments: 0,
@@ -131,7 +127,6 @@ async function ensureStats(memorialId){
 }
 
 async function bumpVisit(memorialId){
-  // 1 visita por dispositivo por día
   const key = `visit_${memorialId}_${new Date().toISOString().slice(0,10)}`;
   if (localStorage.getItem(key)) return;
   localStorage.setItem(key, "1");
@@ -263,7 +258,6 @@ function setupModeratorEntry(){
   const modPanel = document.getElementById("modPanel");
   const roleText = document.getElementById("modRoleText");
 
-  // Nota: el modal real lo maneja mod.js, aquí solo ocultamos/mostramos el acceso si existe.
   if (modEntry) modEntry.hidden = true;
   if (modPanel) modPanel.hidden = true;
 
@@ -465,6 +459,7 @@ function setupLightboxFirebase(gallery){
 
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
+  const lbCap = document.getElementById("lbCap");
   const lbClose = document.getElementById("lbClose");
 
   const btnLogin = document.getElementById("btnLogin");
@@ -532,6 +527,18 @@ function setupLightboxFirebase(gallery){
     current = i;
 
     lbImg.src = gallery[i].src;
+
+    const cap = (gallery[i].caption || "").trim();
+    if (lbCap){
+      if (cap){
+        lbCap.textContent = cap;
+        lbCap.hidden = false;
+      }else{
+        lbCap.textContent = "";
+        lbCap.hidden = true;
+      }
+    }
+
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
@@ -606,6 +613,10 @@ function setupLightboxFirebase(gallery){
   function closeLb(){
     lb.hidden = true;
     lbImg.src = "";
+    if (lbCap){
+      lbCap.textContent = "";
+      lbCap.hidden = true;
+    }
     document.body.style.overflow = "";
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
@@ -665,7 +676,6 @@ function setupLightboxFirebase(gallery){
         hidden: false
       });
 
-      // contador global de comentarios
       await bumpStat(memorialId, "comments", 1);
 
       if (commentText) commentText.value = "";
@@ -696,53 +706,13 @@ function setupLightboxFirebase(gallery){
 
           tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
 
-          const delta = next - prev; // +1 o -1
+          const delta = next - prev;
           tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
         });
       }catch(err){
         showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
       }
     });
-  });
-}
-
-/* ---------------- Anniversary mode ---------------- */
-function applyAnniversary(d){
-  // default 08-06 (6 de agosto) => "MM-DD"
-  const mmdd = (d?.anniversary || "08-06").trim();
-  const today = new Date();
-  const t = String(today.getMonth()+1).padStart(2,"0") + "-" + String(today.getDate()).padStart(2,"0");
-  if (t !== mmdd) return;
-
-  document.body.classList.add("anniversary");
-  const banner = document.getElementById("anniversaryBanner");
-  if (banner) banner.hidden = false;
-}
-
-/* ---------------- Welcome gate ---------------- */
-function setupWelcomeGate(memorialId){
-  const gate = document.getElementById("welcomeGate");
-  const enter = document.getElementById("welcomeEnter");
-  const skip = document.getElementById("welcomeSkip");
-  if (!gate || !enter || !skip) return;
-
-  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
-  if (localStorage.getItem(key)) return;
-
-  gate.hidden = false;
-  document.body.style.overflow = "hidden";
-
-  const close = () => {
-    localStorage.setItem(key, "1");
-    gate.hidden = true;
-    document.body.style.overflow = "";
-  };
-
-  enter.addEventListener("click", close);
-  skip.addEventListener("click", close);
-
-  gate.addEventListener("click", (e) => {
-    if (e.target?.classList?.contains("welcomeBackdrop")) close();
   });
 }
 
@@ -757,20 +727,13 @@ async function loadMemorial(){
 
   const memorialId = getMemorialId();
 
-  // welcome
-  setupWelcomeGate(memorialId);
-
-  // stats
   await ensureStats(memorialId);
   await bumpVisit(memorialId);
   setupStatsLive(memorialId);
 
-  // data.json
   const res = await fetch("data.json", { cache: "no-store" });
   if (!res.ok) throw new Error("No se pudo cargar data.json");
   const d = await res.json();
-
-  applyAnniversary(d);
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
@@ -795,20 +758,17 @@ async function loadMemorial(){
 
   injectEmotionalBlocks(d);
 
-  // gallery
+  // gallery (caption siempre abajo)
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
-  <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-    <div class="mThumbWrap">
-      <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
-      ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
-    </div>
-  </button>
-`).join("");
-
+      <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
+        <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+        ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+      </button>
+    `).join("");
   }
 
   // video/audio
@@ -817,7 +777,7 @@ async function loadMemorial(){
     const vf = document.getElementById("videoFrame");
     if (vs) vs.hidden = false;
     if (vf){
-      vf.src = d.video.youtubeEmbedUrl; // usa /embed/ (no m.youtube.com)
+      vf.src = d.video.youtubeEmbedUrl;
       vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     }
   }
@@ -828,7 +788,6 @@ async function loadMemorial(){
     if (ap) ap.src = d.audio.src;
   }
 
-  // firebase features
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
