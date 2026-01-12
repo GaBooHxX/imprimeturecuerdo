@@ -828,5 +828,31 @@ await bumpVisit(memorialId);
   // primer render stats
   renderStats();
 }
+function setupWelcomeGate(memorialId){
+  const gate = document.getElementById("welcomeGate");
+  const enter = document.getElementById("welcomeEnter");
+  const skip = document.getElementById("welcomeSkip");
+  if (!gate || !enter || !skip) return;
+
+  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
+  if (localStorage.getItem(key)) return;
+
+  gate.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    localStorage.setItem(key, "1");
+    gate.hidden = true;
+    document.body.style.overflow = "";
+  };
+
+  enter.addEventListener("click", close);
+  skip.addEventListener("click", close);
+
+  gate.addEventListener("click", (e) => {
+    if (e.target?.classList?.contains("welcomeBackdrop")) close();
+  });
+}
+setupWelcomeGate(memorialId);
 
 loadMemorial().catch(console.error);
