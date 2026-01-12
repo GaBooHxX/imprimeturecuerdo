@@ -801,11 +801,14 @@ async function loadMemorial(){
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
-      <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-        <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
-        ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
-      </button>
-    `).join("");
+  <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
+    <div class="mThumbWrap">
+      <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+      ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+    </div>
+  </button>
+`).join("");
+
   }
 
   // video/audio
