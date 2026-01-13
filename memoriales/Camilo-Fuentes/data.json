@@ -1,25 +1,28 @@
 {
-  "name": "Camilo Fuentes Covarrubias",
-  "dates": "03 jun 1966 • 06 ago 2025",
-  "bio": "Camilo será recordado por su alegría, cercanía y el cariño que entregó a quienes lo rodearon.",
+  "name": "Camilo Enrique Fuentes Covarrubias",
+  "dates": "03 junio 1966 • 06 agosto 2025",
+  "bio": "Camilo será recordado por su gran simpatía, alegría y cercanía con todos quienes los rodearon. Siempre demostró ser una sonrisa y recibió a todos con cariño.",
   "cover": "../../assets/img/Camilo-Fuentes/cover.jpg",
 
   "hero": {
-    "subtitle": "Siempre en nuestros corazones",
-    "verse": "Tu recuerdo vive en cada sonrisa, en cada historia y en cada abrazo que nos dejaste."
+    "subtitle": "Siempre presente en nuestros corazones",
+    "verse": "Tu recuerdo vive y vivirá en cada sonrisa, en cada historia y en cada abrazo que nos dejaste."
   },
 
   "quotes": [
-    "Gracias por tu amor y tus enseñanzas.",
-    "Tu luz sigue acompañándonos.",
-    "Te recordaremos con alegría."
+    {
+  "title": "Frases Tipicas de Camilo",
+    "Al lado del Sanguche",
+    "Vamos a los confines del mundo y más allá.",
+    "Te invito un pichi yo pago."
   ],
 
   "sections": [
     {
       "title": "Historia",
       "type": "text",
-      "content": "Aquí va la historia del tio camilin "
+      "content": "Camilo Enrique Fuentes Covarrubias, nació un día 03 de Agosto del año 1966, hijo de Camilo FUENTES ARAYA (†) y Maria COVARRUBIAS BRITO, creció en una familia muy humilde y de gran esfuerzo junto con su hermanos María y Sergio, logró con esmero superar los diversos obstaculos de la vida, en donde debían caminar largos tramos para ir a la casa de sus tios o asistir al hogar en donde conoció a muchas personas." 
+      "content": "En su vida logró estudiar y graduarse de la enseñanza media. Luego obtuvo su titulo en nivel superior de tecnico en enfermería, trabajando arduamente en la Clinica Davila, en donde desempeño funciones en el sector de Imagenología."
     },
     {
       "title": "Frases y recuerdos",
