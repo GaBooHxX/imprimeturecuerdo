@@ -137,11 +137,18 @@
     </section>
 
     <!-- Audio -->
-    <section class="mSection" id="audioSection" hidden>
-      <h2>Audio</h2>
-      <audio id="audioPlayer" controls style="width:100%"></audio>
-    </section>
+<section class="mSection" id="audioSection" hidden>
+  <h2>Audio</h2>
 
+  <div class="mAudio">
+    <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
+    <p id="audioHint" class="meta" style="margin:8px 0 0">
+      Volumen inicial suave. Puedes ajustar desde los controles.
+    </p>
+
+    <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
+  </div>
+</section>
   </main>
 
   <!-- LIGHTBOX PRO -->
