@@ -613,4 +613,24 @@ a{color:inherit;text-decoration:none}
 }
 .mAudioBtn:hover{ background: rgba(214,178,107,.18); }
 .mAudioBtn:active{ transform: scale(.99); }
+/* =========================
+   (8) Accesibilidad
+   ========================= */
+
+/* Foco visible bonito (teclado) */
+:focus-visible{
+  outline: 2px solid rgba(214,178,107,.75);
+  outline-offset: 3px;
+}
+
+/* Respeta reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cSpark{ display:none !important; }
+}
 
