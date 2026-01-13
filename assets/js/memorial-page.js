@@ -826,17 +826,49 @@ async function loadMemorial(){
   }
 
   if (d.audio?.src){
-    const as = document.getElementById("audioSection");
-    const ap = document.getElementById("audioPlayer");
-    if (as) as.hidden = false;
-    if (ap) ap.src = d.audio.src;
-  }
+  const as = document.getElementById("audioSection");
+  const ap = document.getElementById("audioPlayer");
+  if (as) as.hidden = false;
+  if (ap) ap.src = d.audio.src;
 
+  setupAudioUX();
+}
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
   renderStats();
   hideLoader();
+}
+function setupAudioUX(){
+  const ap = document.getElementById("audioPlayer");
+  const btn = document.getElementById("audioToggle");
+  if (!ap || !btn) return;
+
+  // Volumen inicial suave (25%)
+  try{
+    ap.volume = 0.25;
+  }catch(e){}
+
+  const setLabel = () => {
+    btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar";
+  };
+
+  btn.addEventListener("click", async () => {
+    try{
+      if (ap.paused) await ap.play();
+      else ap.pause();
+      setLabel();
+    }catch(e){
+      // si el navegador bloquea play por interacción, el click ya cuenta como interacción
+      setLabel();
+    }
+  });
+
+  ap.addEventListener("play", setLabel);
+  ap.addEventListener("pause", setLabel);
+  ap.addEventListener("ended", setLabel);
+
+  setLabel();
 }
 
 loadMemorial().catch((e) => {
