@@ -12,57 +12,35 @@
 
 <body>
 
-  <!-- LOADER (2) -->
-  <div id="pageLoader" class="pLoader" hidden>
-    <div class="pLoader__card">
-      <div class="pLoader__ring" aria-hidden="true"></div>
-      <div class="pLoader__txt">
-        <strong>Cargando memorial…</strong>
-        <span>Gracias por acompañar este recuerdo</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- WELCOME GATE (1) -->
-  <div id="welcomeGate" class="wGate" hidden>
-    <div class="wGate__backdrop welcomeBackdrop"></div>
-
-    <div class="wGate__card" role="dialog" aria-modal="true" aria-label="Bienvenida al memorial">
-      <div class="wGate__mark">🕯️</div>
-      <h2 class="wGate__title">Gracias por acompañar este recuerdo</h2>
-      <p class="wGate__text">
-        Te invitamos a recorrer este memorial con respeto, cariño y gratitud.
-      </p>
-
-      <div class="wGate__actions">
-        <button id="welcomeEnter" class="wGate__btn primary" type="button">Ingresar</button>
-        <button id="welcomeSkip" class="wGate__btn ghost" type="button">Entrar sin mensaje</button>
-      </div>
-
-      <p class="wGate__hint">Este mensaje se mostrará una vez al día en este dispositivo.</p>
-    </div>
-  </div>
-
   <!-- Barra superior -->
   <header class="mTop">
-    <div class="mWrap mTop__row">
+    <div class="mWrap mTop__inner">
       <a href="https://gaboohxx.github.io/imprimeturecuerdo/" class="mBack">← Inicio</a>
-
       <strong>Imprime tu Recuerdo</strong>
-
-      <!-- (3) Compartir -->
-      <button id="btnShare" class="mTopBtn" type="button" title="Compartir memorial" aria-label="Compartir memorial">
-        Compartir
-      </button>
     </div>
   </header>
 
+  <!-- Menú ancla -->
+  <nav class="mMenu">
+    <div class="mWrap mMenu__inner">
+      <a href="#inicio">Inicio</a>
+      <a href="#frases">Frases</a>
+      <a href="#stats">Huella</a>
+      <a href="#galeria">Galería</a>
+      <a href="#video">Video</a>
+      <a href="#audio">Audio</a>
+    </div>
+  </nav>
+
   <main class="mWrap">
+
+    <div id="inicio"></div>
 
     <!-- Portada -->
     <div class="mCoverWrap" id="coverWrap">
       <img id="coverBg" class="mCoverBg" alt="">
       <img id="cover" class="mCover" alt="">
+      <div class="mCoverShade"></div>
     </div>
 
     <!-- Datos principales -->
@@ -113,9 +91,12 @@
       <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
     </section>
 
-    <!-- Contenido emocional dinámico -->
+    <!-- Frases / secciones dinámicas -->
+    <div id="frases"></div>
     <div id="extraBlocks"></div>
 
+    <!-- Stats -->
+    <div id="stats"></div>
     <section class="mSection" id="statsSection" hidden>
       <h2>Huella de cariño</h2>
       <div class="mDivider"><span>🕯️</span></div>
@@ -123,12 +104,14 @@
     </section>
 
     <!-- Galería -->
-    <section class="mSection">
+    <section class="mSection" id="galeria">
       <h2>Galería</h2>
+      <p class="meta">Toca una fotografía para verla en detalle, reaccionar o dejar un comentario.</p>
       <div id="gallery" class="mGallery"></div>
     </section>
 
     <!-- Video -->
+    <div id="video"></div>
     <section class="mSection" id="videoSection" hidden>
       <h2>Video</h2>
       <div class="mVideo">
@@ -137,34 +120,33 @@
     </section>
 
     <!-- Audio -->
-<section class="mSection" id="audioSection" hidden>
-  <h2>Audio</h2>
+    <div id="audio"></div>
+    <section class="mSection" id="audioSection" hidden>
+      <h2>Audio</h2>
+      <audio id="audioPlayer" controls style="width:100%"></audio>
+    </section>
 
-  <div class="mAudio">
-    <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
-    <p id="audioHint" class="meta" style="margin:8px 0 0">
-      Volumen inicial suave. Puedes ajustar desde los controles.
-    </p>
+    <footer class="mFooter">
+      <div class="mDivider"><span>✦</span></div>
+      <p class="meta">Este memorial es un espacio de respeto y amor. Gracias por acompañar.</p>
+    </footer>
 
-    <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
-  </div>
-</section>
   </main>
 
+  <!-- ===================== -->
   <!-- LIGHTBOX PRO -->
+  <!-- ===================== -->
   <div id="lightbox" class="lb" hidden>
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
-    <div class="lb__wrap">
-  <div class="lb__media">
+    <!-- Flechas navegación -->
     <button id="lbPrev" class="lbNav lbNav--prev" type="button" aria-label="Foto anterior">‹</button>
-
-    <img id="lbImg" class="lb__img" alt="">
-
     <button id="lbNext" class="lbNav lbNav--next" type="button" aria-label="Foto siguiente">›</button>
-  </div>
 
-  <aside class="lb__panel">
+    <div class="lb__wrap">
+      <img id="lbImg" class="lb__img" alt="">
+
+      <aside class="lb__panel">
         <div class="lb__auth">
           <div id="userInfo" class="lb__user">Invitado</div>
 
@@ -191,7 +173,9 @@
     </div>
   </div>
 
+  <!-- ===================== -->
   <!-- MODAL MODERACIÓN -->
+  <!-- ===================== -->
   <div id="modModal" class="lb" hidden>
     <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
@@ -233,6 +217,3 @@
 
 </body>
 </html>
-
-</html>
-
