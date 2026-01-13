@@ -1,29 +1,27 @@
 {
   "name": "Camilo Enrique Fuentes Covarrubias",
   "dates": "03 junio 1966 • 06 agosto 2025",
-  "bio": "Camilo será recordado por su gran simpatía, alegría y cercanía con todos quienes los rodearon. Siempre demostró ser una sonrisa y recibió a todos con cariño.",
-  "cover": "../../assets/img/Camilo-Fuentes/cover.jpg",
+  "bio": "Camilo será recordado por su gran simpatía, alegría y cercanía con todos quienes lo rodearon. Siempre demostró ser una sonrisa y recibió a todos con cariño.",
 
   "hero": {
     "subtitle": "Siempre presente en nuestros corazones",
     "verse": "Tu recuerdo vive y vivirá en cada sonrisa, en cada historia y en cada abrazo que nos dejaste."
   },
 
-  "quotes": [
-    {
-  "title": "Frases Tipicas de Camilo",
-    "Al lado del Sanguche",
+  "frases": [
+    "Al lado del sanguche",
     "Vamos a los confines del mundo y más allá.",
-    "Te invito un pichi yo pago."
-    }
+    "Te invito un pichi, yo pago."
   ],
 
   "sections": [
     {
       "title": "Historia",
       "type": "text",
-      "content": "Camilo Enrique Fuentes Covarrubias, nació un día 03 de Agosto del año 1966, hijo de Camilo FUENTES ARAYA (†) y Maria COVARRUBIAS BRITO, creció en una familia muy humilde y de gran esfuerzo junto con su hermanos María y Sergio, logró con esmero superar los diversos obstaculos de la vida, en donde debían caminar largos tramos para ir a la casa de sus tios o asistir al hogar en donde conoció a muchas personas." 
-      "content": "En su vida logró estudiar y graduarse de la enseñanza media. Luego obtuvo su titulo en nivel superior de tecnico en enfermería, trabajando arduamente en la Clinica Davila, en donde desempeño funciones en el sector de Imagenología."
+      "content": [
+        "Camilo Enrique Fuentes Covarrubias nació el 03 de agosto de 1966, hijo de Camilo Fuentes Araya (†) y María Covarrubias Brito. Creció en una familia muy humilde y de gran esfuerzo junto a sus hermanos María y Sergio, superando con esmero los diversos obstáculos de la vida, caminando largos tramos para visitar a sus tíos o asistir al hogar donde conoció a muchas personas.",
+        "En su vida logró completar la enseñanza media y posteriormente obtuvo su título de Técnico en Enfermería. Trabajó con dedicación en la Clínica Dávila, desempeñándose en el área de Imagenología, donde dejó una huella humana y profesional imborrable."
+      ]
     },
     {
       "title": "Frases y recuerdos",
@@ -42,51 +40,27 @@
   ],
 
   "gallery": [
-    {
-      "src": "../../assets/img/Camilo-Fuentes/1.jpg",
-      "caption": "Un momento especial"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/2.jpg",
-      "caption": "Compartiendo en familia"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/3.jpg",
-      "caption": "Una sonrisa inolvidable"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/4.jpg",
-      "caption": "Un momento especial"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/5.jpg",
-      "caption": "Compartiendo en familia"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/6.jpg",
-      "caption": "Una sonrisa inolvidable"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/7.jpg",
-      "caption": "Un momento especial"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/8.jpg",
-      "caption": "Compartiendo en familia"
-    },
-    {
-      "src": "../../assets/img/Camilo-Fuentes/9.jpg",
-      "caption": "Una sonrisa inolvidable"
-    }
+    { "src": "../../assets/img/Camilo-Fuentes/1.jpg", "caption": "Un momento especial" },
+    { "src": "../../assets/img/Camilo-Fuentes/2.jpg", "caption": "Compartiendo en familia" },
+    { "src": "../../assets/img/Camilo-Fuentes/3.jpg", "caption": "Una sonrisa inolvidable" },
+    { "src": "../../assets/img/Camilo-Fuentes/4.jpg", "caption": "Un momento especial" },
+    { "src": "../../assets/img/Camilo-Fuentes/5.jpg", "caption": "Compartiendo en familia" },
+    { "src": "../../assets/img/Camilo-Fuentes/6.jpg", "caption": "Una sonrisa inolvidable" },
+    { "src": "../../assets/img/Camilo-Fuentes/7.jpg", "caption": "Un momento especial" },
+    { "src": "../../assets/img/Camilo-Fuentes/8.jpg", "caption": "Compartiendo en familia" },
+    { "src": "../../assets/img/Camilo-Fuentes/9.jpg", "caption": "Una sonrisa inolvidable" }
   ],
 
   "video": {
-  "youtubeEmbedUrl": "https://www.youtube.com/embed/bVRJBzlRGaY",
+    "youtubeEmbedUrl": "https://www.youtube.com/embed/bVRJBzlRGaY",
     "caption": "Homenaje en video"
   },
 
   "audio": {
     "src": "../../assets/audio/Camilo-Fuentes/mensaje.mp3",
     "caption": "Mensaje de la familia"
+  }
+}
+
   }
 }
