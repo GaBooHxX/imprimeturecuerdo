@@ -79,10 +79,8 @@ function getMemorialId(){
   if (mid) return mid;
 
   const parts = location.pathname.split("/").filter(Boolean);
-
   const idxEs = parts.indexOf("memoriales");
   if (idxEs >= 0 && parts[idxEs + 1]) return parts[idxEs + 1];
-
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
@@ -163,6 +161,79 @@ function showAuthError(msg){
   }
   box.hidden = false;
   box.textContent = msg;
+}
+
+/* ---------------- Loader (2) ---------------- */
+function showLoader(){
+  const l = document.getElementById("pageLoader");
+  if (!l) return;
+  l.hidden = false;
+}
+function hideLoader(){
+  const l = document.getElementById("pageLoader");
+  if (!l) return;
+  l.hidden = true;
+}
+
+/* ---------------- Welcome gate (1) ---------------- */
+function setupWelcomeGate(memorialId){
+  const gate = document.getElementById("welcomeGate");
+  const enter = document.getElementById("welcomeEnter");
+  const skip = document.getElementById("welcomeSkip");
+  if (!gate || !enter || !skip) return;
+
+  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
+  if (localStorage.getItem(key)) return;
+
+  gate.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    localStorage.setItem(key, "1");
+    gate.hidden = true;
+    document.body.style.overflow = "";
+  };
+
+  enter.addEventListener("click", close);
+  skip.addEventListener("click", close);
+
+  gate.addEventListener("click", (e) => {
+    if (e.target?.classList?.contains("welcomeBackdrop")) close();
+  });
+}
+
+/* ---------------- Share (3) ---------------- */
+function setupShare(){
+  const btn = document.getElementById("btnShare");
+  if (!btn) return;
+
+  const shareUrl = location.href;
+  btn.addEventListener("click", async () => {
+    try{
+      if (navigator.share){
+        await navigator.share({
+          title: document.title || "Memorial",
+          text: "Te comparto este memorial.",
+          url: shareUrl
+        });
+        return;
+      }
+    }catch(e){
+      // si el usuario cancela, no hacemos nada
+      return;
+    }
+
+    // fallback: copiar al portapapeles
+    try{
+      await navigator.clipboard.writeText(shareUrl);
+      const old = btn.textContent;
+      btn.textContent = "Copiado ✅";
+      setTimeout(() => btn.textContent = old || "Compartir", 1200);
+    }catch(e){
+      // último fallback: prompt
+      window.prompt("Copia este enlace:", shareUrl);
+    }
+  });
 }
 
 /* ---------------- Auth persistence + login ---------------- */
@@ -250,7 +321,7 @@ function setupUidRow(){
   });
 }
 
-/* ---------------- Mostrar MOD/ADMIN + rol (solo indicador) ---------------- */
+/* ---------------- Mostrar MOD/ADMIN + rol ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
@@ -459,7 +530,6 @@ function setupLightboxFirebase(gallery){
 
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
-  const lbCap = document.getElementById("lbCap");
   const lbClose = document.getElementById("lbClose");
 
   const btnLogin = document.getElementById("btnLogin");
@@ -527,25 +597,12 @@ function setupLightboxFirebase(gallery){
     current = i;
 
     lbImg.src = gallery[i].src;
-
-    const cap = (gallery[i].caption || "").trim();
-    if (lbCap){
-      if (cap){
-        lbCap.textContent = cap;
-        lbCap.hidden = false;
-      }else{
-        lbCap.textContent = "";
-        lbCap.hidden = true;
-      }
-    }
-
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    // COMMENTS
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
       (snap) => {
@@ -580,16 +637,9 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      },
-      (err) => {
-        console.warn("comments snapshot error:", err?.code || err);
-        if (commentsList){
-          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
-        }
       }
     );
 
-    // REACTIONS (conteo por foto)
     unsubReactions = onSnapshot(
       reactionsCol(memorialId, i),
       (snap) => {
@@ -603,9 +653,6 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      },
-      (err) => {
-        console.warn("reactions snapshot error:", err?.code || err);
       }
     );
   }
@@ -613,10 +660,6 @@ function setupLightboxFirebase(gallery){
   function closeLb(){
     lb.hidden = true;
     lbImg.src = "";
-    if (lbCap){
-      lbCap.textContent = "";
-      lbCap.hidden = true;
-    }
     document.body.style.overflow = "";
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
@@ -624,7 +667,6 @@ function setupLightboxFirebase(gallery){
     unsubReactions = null;
   }
 
-  // abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -656,7 +698,6 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
-  // comentar
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
@@ -684,7 +725,6 @@ function setupLightboxFirebase(gallery){
     }
   });
 
-  // reacciones (y contador global reactions con transacción)
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -718,14 +758,19 @@ function setupLightboxFirebase(gallery){
 
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
+  showLoader();
+
   await initAuthPersistence();
   setupGlobalAuthUI();
   setupUidRow();
   setupModeratorEntry();
+  setupShare();
 
   try{ await getRedirectResult(auth); }catch(e){}
 
   const memorialId = getMemorialId();
+
+  setupWelcomeGate(memorialId);
 
   await ensureStats(memorialId);
   await bumpVisit(memorialId);
@@ -737,7 +782,6 @@ async function loadMemorial(){
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
-  // cover + blur
   const cover = document.getElementById("cover");
   if (cover){
     cover.src = d.cover || "";
@@ -748,7 +792,6 @@ async function loadMemorial(){
     coverBg.src = d.cover || "";
   }
 
-  // texts
   const nameEl = document.getElementById("name");
   const datesEl = document.getElementById("dates");
   const bioEl = document.getElementById("bio");
@@ -758,20 +801,20 @@ async function loadMemorial(){
 
   injectEmotionalBlocks(d);
 
-  // gallery (caption siempre abajo)
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
       <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-        <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
-        ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+        <div class="mThumbWrap">
+          <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+          ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+        </div>
       </button>
     `).join("");
   }
 
-  // video/audio
   if (d.video?.youtubeEmbedUrl){
     const vs = document.getElementById("videoSection");
     const vf = document.getElementById("videoFrame");
@@ -781,6 +824,7 @@ async function loadMemorial(){
       vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     }
   }
+
   if (d.audio?.src){
     const as = document.getElementById("audioSection");
     const ap = document.getElementById("audioPlayer");
@@ -792,7 +836,10 @@ async function loadMemorial(){
   setupGlobalCandles(memorialId);
 
   renderStats();
+  hideLoader();
 }
 
-loadMemorial().catch(console.error);
-
+loadMemorial().catch((e) => {
+  console.error(e);
+  hideLoader();
+});
