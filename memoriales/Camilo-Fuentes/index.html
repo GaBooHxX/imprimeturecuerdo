@@ -4,9 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#06070a" />
   <title>Memorial</title>
 
-  <!-- CSS memorial -->
   <link rel="stylesheet" href="../../assets/css/memorial.css" />
 </head>
 
@@ -14,43 +14,51 @@
 
   <!-- Barra superior -->
   <header class="mTop">
-    <div class="mWrap mTop__inner">
-      <a href="https://gaboohxx.github.io/imprimeturecuerdo/" class="mBack">← Inicio</a>
-      <strong>Imprime tu Recuerdo</strong>
+    <div class="mWrap mTopInner">
+      <a href="/" class="mBack">← Inicio</a>
+
+      <div class="mBrand">
+        <span class="mBrandDot" aria-hidden="true"></span>
+        <strong>Imprime tu Recuerdo</strong>
+      </div>
+
+      <div class="mTopRight" aria-hidden="true"></div>
     </div>
   </header>
 
-  <!-- Menú ancla -->
-  <nav class="mMenu">
-    <div class="mWrap mMenu__inner">
-      <a href="#inicio">Inicio</a>
-      <a href="#frases">Frases</a>
-      <a href="#stats">Huella</a>
-      <a href="#galeria">Galería</a>
-      <a href="#video">Video</a>
-      <a href="#audio">Audio</a>
-    </div>
-  </nav>
-
-  <main class="mWrap">
-
-    <div id="inicio"></div>
+  <main class="mWrap" id="top">
 
     <!-- Portada -->
     <div class="mCoverWrap" id="coverWrap">
       <img id="coverBg" class="mCoverBg" alt="">
       <img id="cover" class="mCover" alt="">
-      <div class="mCoverShade"></div>
+      <div class="mCoverShade" aria-hidden="true"></div>
     </div>
 
     <!-- Datos principales -->
-    <h1 id="name" class="mName"></h1>
-    <p id="dates" class="mDates"></p>
-    <p id="bio" class="mBio"></p>
+    <div class="mHeroText" id="secInicio">
+      <h1 id="name" class="mName"></h1>
+      <p id="dates" class="mDates"></p>
+      <p id="bio" class="mBio"></p>
+    </div>
+
+    <!-- Índice / Navegación en la misma página -->
+    <nav class="mNav" aria-label="Navegación del memorial">
+      <a class="mNavLink" href="#secInicio">Inicio</a>
+      <a class="mNavLink" href="#secFrases">Frases</a>
+      <a class="mNavLink" href="#secHuella">Huella</a>
+      <a class="mNavLink" href="#secFotos">Fotos</a>
+      <a class="mNavLink" href="#secVideo">Video</a>
+      <a class="mNavLink" href="#secAudio">Audio</a>
+    </nav>
 
     <!-- Login GLOBAL -->
-    <section class="mSection">
-      <h2>Deja tu recuerdo</h2>
+    <section class="mSection" id="secLogin">
+      <div class="mSectionHead">
+        <h2>Deja tu recuerdo</h2>
+        <div class="mSectionTag">Comunidad</div>
+      </div>
+
       <p class="meta">Para comentar y reaccionar en las fotografías, debes iniciar sesión con Google.</p>
 
       <div class="authRow">
@@ -69,7 +77,7 @@
       <p class="meta" id="modRoleText" style="margin-top:6px"></p>
       <p id="authError" class="authError" hidden></p>
 
-      <!-- UID (se muestra solo al iniciar sesión) -->
+      <!-- UID -->
       <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
         <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
           <span>Tu UID:</span>
@@ -91,67 +99,84 @@
       <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
     </section>
 
-    <!-- Frases / secciones dinámicas -->
-    <div id="frases"></div>
+    <!-- Contenido emocional dinámico -->
+    <!-- IMPORTANTE: le añadimos un ancla antes para que “Frases” caiga bien -->
+    <div id="secFrases" class="mAnchor"></div>
     <div id="extraBlocks"></div>
 
     <!-- Stats -->
-    <div id="stats"></div>
-    <section class="mSection" id="statsSection" hidden>
-      <h2>Huella de cariño</h2>
+    <div id="secHuella" class="mAnchor"></div>
+    <section class="mSection mSectionGold" id="statsSection" hidden>
+      <div class="mSectionHead">
+        <h2>Huella de cariño</h2>
+        <div class="mSectionTag">Memoria</div>
+      </div>
       <div class="mDivider"><span>🕯️</span></div>
       <div class="mStats" id="statsGrid"></div>
     </section>
 
     <!-- Galería -->
-    <section class="mSection" id="galeria">
-      <h2>Galería</h2>
-      <p class="meta">Toca una fotografía para verla en detalle, reaccionar o dejar un comentario.</p>
+    <div id="secFotos" class="mAnchor"></div>
+    <section class="mSection">
+      <div class="mSectionHead">
+        <h2>Fotografías</h2>
+        <div class="mSectionTag">Galería</div>
+      </div>
+      <p class="meta">Toca una fotografía para ver recuerdos y reacciones.</p>
       <div id="gallery" class="mGallery"></div>
     </section>
 
     <!-- Video -->
-    <div id="video"></div>
+    <div id="secVideo" class="mAnchor"></div>
     <section class="mSection" id="videoSection" hidden>
-      <h2>Video</h2>
+      <div class="mSectionHead">
+        <h2>Video</h2>
+        <div class="mSectionTag">Homenaje</div>
+      </div>
       <div class="mVideo">
         <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
       </div>
     </section>
 
     <!-- Audio -->
-    <div id="audio"></div>
+    <div id="secAudio" class="mAnchor"></div>
     <section class="mSection" id="audioSection" hidden>
-      <h2>Audio</h2>
+      <div class="mSectionHead">
+        <h2>Audio</h2>
+        <div class="mSectionTag">Mensaje</div>
+      </div>
       <audio id="audioPlayer" controls style="width:100%"></audio>
     </section>
 
     <footer class="mFooter">
-      <div class="mDivider"><span>✦</span></div>
-      <p class="meta">Este memorial es un espacio de respeto y amor. Gracias por acompañar.</p>
+      <div class="mFooterLine"></div>
+      <p class="meta" style="margin:12px 0 0">Con respeto y cariño. <span style="color:rgba(214,178,107,.9)">Imprime tu Recuerdo</span>.</p>
+      <a class="mToTop" href="#top">Volver arriba ↑</a>
     </footer>
 
   </main>
 
-  <!-- ===================== -->
-  <!-- LIGHTBOX PRO -->
-  <!-- ===================== -->
+  <!-- LIGHTBOX -->
   <div id="lightbox" class="lb" hidden>
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
-    <!-- Flechas navegación -->
-    <button id="lbPrev" class="lbNav lbNav--prev" type="button" aria-label="Foto anterior">‹</button>
-    <button id="lbNext" class="lbNav lbNav--next" type="button" aria-label="Foto siguiente">›</button>
-
     <div class="lb__wrap">
-      <img id="lbImg" class="lb__img" alt="">
+      <figure class="lb__figure">
+        <img id="lbImg" class="lb__img" alt="">
+        <figcaption class="lb__figcap" id="lbCap" hidden></figcaption>
+      </figure>
 
       <aside class="lb__panel">
         <div class="lb__auth">
-          <div id="userInfo" class="lb__user">Invitado</div>
+          <div>
+            <div class="lb__title">Recuerdo en esta fotografía</div>
+            <div id="userInfo" class="lb__user">Invitado</div>
+          </div>
 
-          <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión con Google</button>
-          <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
+          <div class="lb__authBtns">
+            <button id="btnLogin" class="lb__btn" type="button">Iniciar sesión</button>
+            <button id="btnLogout" class="lb__btn ghost" type="button" hidden>Cerrar sesión</button>
+          </div>
         </div>
 
         <div class="lb__reactions">
@@ -164,28 +189,25 @@
 
         <div class="lb__commentBox">
           <textarea id="commentText" class="lb__text" placeholder="Deja un recuerdo sobre esta fotografía…" maxlength="500" disabled></textarea>
-          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar comentario</button>
+          <button id="btnComment" class="lb__btn primary" type="button" disabled>Publicar recuerdo</button>
           <div id="commentHint" class="lb__hint">Para comentar y reaccionar debes iniciar sesión.</div>
         </div>
 
+        <div class="lb__commentsTitle">Mensajes</div>
         <div id="commentsList" class="lb__comments"></div>
       </aside>
     </div>
   </div>
 
-  <!-- ===================== -->
   <!-- MODAL MODERACIÓN -->
-  <!-- ===================== -->
   <div id="modModal" class="lb" hidden>
     <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
-
     <div class="lb__wrap" style="grid-template-columns:1fr;">
       <aside class="lb__panel">
         <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
 
         <div class="authRow" style="margin-bottom:10px">
           <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
-
           <label class="lb__hint" style="display:flex; gap:8px; align-items:center">
             <input type="checkbox" id="modShowHidden">
             Mostrar ocultos
@@ -211,7 +233,6 @@
     </div>
   </div>
 
-  <!-- JS -->
   <script type="module" src="../../assets/js/memorial-page.js"></script>
   <script type="module" src="../../assets/js/memorial-mod.js"></script>
 
