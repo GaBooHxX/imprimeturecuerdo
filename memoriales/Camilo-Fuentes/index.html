@@ -7,7 +7,6 @@
   <meta name="theme-color" content="#06070a" />
   <title>Memorial</title>
 
-  <!-- CSS memorial -->
   <link rel="stylesheet" href="../../assets/css/memorial.css" />
 </head>
 
@@ -27,7 +26,7 @@
     </div>
   </header>
 
-  <main class="mWrap">
+  <main class="mWrap" id="top">
 
     <!-- Portada -->
     <div class="mCoverWrap" id="coverWrap">
@@ -37,13 +36,29 @@
     </div>
 
     <!-- Datos principales -->
-    <h1 id="name" class="mName"></h1>
-    <p id="dates" class="mDates"></p>
-    <p id="bio" class="mBio"></p>
+    <div class="mHeroText" id="secInicio">
+      <h1 id="name" class="mName"></h1>
+      <p id="dates" class="mDates"></p>
+      <p id="bio" class="mBio"></p>
+    </div>
+
+    <!-- Índice / Navegación en la misma página -->
+    <nav class="mNav" aria-label="Navegación del memorial">
+      <a class="mNavLink" href="#secInicio">Inicio</a>
+      <a class="mNavLink" href="#secFrases">Frases</a>
+      <a class="mNavLink" href="#secHuella">Huella</a>
+      <a class="mNavLink" href="#secFotos">Fotos</a>
+      <a class="mNavLink" href="#secVideo">Video</a>
+      <a class="mNavLink" href="#secAudio">Audio</a>
+    </nav>
 
     <!-- Login GLOBAL -->
-    <section class="mSection">
-      <h2>Deja tu recuerdo</h2>
+    <section class="mSection" id="secLogin">
+      <div class="mSectionHead">
+        <h2>Deja tu recuerdo</h2>
+        <div class="mSectionTag">Comunidad</div>
+      </div>
+
       <p class="meta">Para comentar y reaccionar en las fotografías, debes iniciar sesión con Google.</p>
 
       <div class="authRow">
@@ -85,41 +100,63 @@
     </section>
 
     <!-- Contenido emocional dinámico -->
+    <!-- IMPORTANTE: le añadimos un ancla antes para que “Frases” caiga bien -->
+    <div id="secFrases" class="mAnchor"></div>
     <div id="extraBlocks"></div>
 
     <!-- Stats -->
-    <section class="mSection mSectionSoft" id="statsSection" hidden>
-      <h2>Huella de cariño</h2>
+    <div id="secHuella" class="mAnchor"></div>
+    <section class="mSection mSectionGold" id="statsSection" hidden>
+      <div class="mSectionHead">
+        <h2>Huella de cariño</h2>
+        <div class="mSectionTag">Memoria</div>
+      </div>
       <div class="mDivider"><span>🕯️</span></div>
       <div class="mStats" id="statsGrid"></div>
     </section>
 
     <!-- Galería -->
+    <div id="secFotos" class="mAnchor"></div>
     <section class="mSection">
-      <h2>Galería</h2>
+      <div class="mSectionHead">
+        <h2>Fotografías</h2>
+        <div class="mSectionTag">Galería</div>
+      </div>
       <p class="meta">Toca una fotografía para ver recuerdos y reacciones.</p>
       <div id="gallery" class="mGallery"></div>
     </section>
 
     <!-- Video -->
+    <div id="secVideo" class="mAnchor"></div>
     <section class="mSection" id="videoSection" hidden>
-      <h2>Video</h2>
+      <div class="mSectionHead">
+        <h2>Video</h2>
+        <div class="mSectionTag">Homenaje</div>
+      </div>
       <div class="mVideo">
         <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
       </div>
     </section>
 
     <!-- Audio -->
+    <div id="secAudio" class="mAnchor"></div>
     <section class="mSection" id="audioSection" hidden>
-      <h2>Audio</h2>
+      <div class="mSectionHead">
+        <h2>Audio</h2>
+        <div class="mSectionTag">Mensaje</div>
+      </div>
       <audio id="audioPlayer" controls style="width:100%"></audio>
     </section>
 
+    <footer class="mFooter">
+      <div class="mFooterLine"></div>
+      <p class="meta" style="margin:12px 0 0">Con respeto y cariño. <span style="color:rgba(214,178,107,.9)">Imprime tu Recuerdo</span>.</p>
+      <a class="mToTop" href="#top">Volver arriba ↑</a>
+    </footer>
+
   </main>
 
-  <!-- ===================== -->
-  <!-- LIGHTBOX PRO -->
-  <!-- ===================== -->
+  <!-- LIGHTBOX -->
   <div id="lightbox" class="lb" hidden>
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
@@ -162,19 +199,15 @@
     </div>
   </div>
 
-  <!-- ===================== -->
   <!-- MODAL MODERACIÓN -->
-  <!-- ===================== -->
   <div id="modModal" class="lb" hidden>
     <button id="modClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
-
     <div class="lb__wrap" style="grid-template-columns:1fr;">
       <aside class="lb__panel">
         <h2 style="margin:0 0 10px">🛡️ Panel de Moderación</h2>
 
         <div class="authRow" style="margin-bottom:10px">
           <button id="modRefresh" class="lb__btn primary" type="button">Refrescar</button>
-
           <label class="lb__hint" style="display:flex; gap:8px; align-items:center">
             <input type="checkbox" id="modShowHidden">
             Mostrar ocultos
@@ -200,7 +233,6 @@
     </div>
   </div>
 
-  <!-- JS -->
   <script type="module" src="../../assets/js/memorial-page.js"></script>
   <script type="module" src="../../assets/js/memorial-mod.js"></script>
 
