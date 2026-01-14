@@ -21,10 +21,10 @@ a{color:inherit;text-decoration:none}
 
 .mWrap{max-width:900px;margin:auto;padding:20px}
 
-/* Anclas: para que no queden ocultas bajo la barra sticky */
-.mAnchor{ scroll-margin-top: 135px; }
+/* Anclas: para que no queden ocultas bajo top sticky */
+.mAnchor{ scroll-margin-top: 90px; }
 
-/* Top */
+/* Top sticky */
 .mTop{
   position:sticky;
   top:0;
@@ -47,38 +47,6 @@ a{color:inherit;text-decoration:none}
   background:rgba(255,255,255,.04);
 }
 
-/* ✅ MENU (nuevo) */
-.mMenu{
-  position:sticky;
-  top:56px;
-  z-index:49;
-  background:rgba(6,7,10,.78);
-  border-bottom:1px solid var(--line);
-  backdrop-filter: blur(10px);
-}
-.mMenu__row{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  overflow:auto;
-  padding-top:10px;
-  padding-bottom:10px;
-  scrollbar-width:none;
-}
-.mMenu__row::-webkit-scrollbar{ display:none; }
-.mMenu__btn{
-  white-space:nowrap;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid rgba(214,178,107,.30);
-  background:rgba(214,178,107,.10);
-  color:rgba(238,241,247,.95);
-  font-weight:900;
-  font-size:13px;
-}
-.mMenu__btn:hover{ background:rgba(214,178,107,.16); }
-.mMenu__btn:active{ transform:scale(.99); }
-
 /* Botón superior "Compartir" */
 .mTopBtn{
   padding:8px 12px;
@@ -91,6 +59,30 @@ a{color:inherit;text-decoration:none}
 }
 .mTopBtn:hover{background:rgba(214,178,107,.16)}
 .mTopBtn:active{transform:scale(.99)}
+
+/* ✅ Botón flotante subir */
+.mToTop{
+  position:fixed;
+  right:16px;
+  bottom:16px;
+  z-index:9998;
+  width:48px;
+  height:48px;
+  border-radius:16px;
+  border:1px solid rgba(214,178,107,.35);
+  background:rgba(0,0,0,.35);
+  color:rgba(238,241,247,.96);
+  font-size:20px;
+  font-weight:900;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  transition: transform .15s ease, background .15s ease, opacity .15s ease;
+}
+.mToTop:hover{ background:rgba(214,178,107,.12); transform:scale(1.03); }
+.mToTop:active{ transform:scale(.99); }
 
 /* Portada con fondo blur */
 .mCoverWrap{
@@ -121,6 +113,33 @@ a{color:inherit;text-decoration:none}
   object-fit: contain;
   object-position: center;
 }
+
+/* ✅ Menú categoría bajo portada (NO sticky) */
+.mCat{
+  margin-top:12px;
+  padding:10px;
+  border-radius:16px;
+  border:1px solid rgba(214,178,107,.22);
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.03));
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:center;
+  box-shadow: 0 18px 50px rgba(0,0,0,.35);
+}
+.mCat__btn{
+  padding:9px 12px;
+  border-radius:999px;
+  border:1px solid rgba(214,178,107,.28);
+  background:rgba(214,178,107,.10);
+  color:rgba(238,241,247,.95);
+  font-weight:900;
+  font-size:13px;
+  letter-spacing:.2px;
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+.mCat__btn:hover{ background:rgba(214,178,107,.16); transform: translateY(-1px); }
+.mCat__btn:active{ transform: translateY(0) scale(.99); }
 
 .mName{
   font-size:32px;
@@ -171,7 +190,7 @@ a{color:inherit;text-decoration:none}
   -webkit-tap-highlight-color: transparent;
 }
 
-/* ✅ caption SIEMPRE ABAJO */
+/* caption SIEMPRE ABAJO */
 .mThumbWrap{
   display:flex;
   flex-direction:column;
@@ -203,7 +222,7 @@ a{color:inherit;text-decoration:none}
   .mThumb{height:220px}
 }
 
-/* Video container */
+/* Video */
 .mVideo{
   position:relative;
   width:100%;
@@ -381,7 +400,7 @@ a{color:inherit;text-decoration:none}
   font-weight:900; color:#1a73e8; font-size:12px;
 }
 
-/* Botón vela */
+/* Vela */
 .mCandleBtn{
   font-size:18px;
   padding:14px 18px;
@@ -421,7 +440,7 @@ a{color:inherit;text-decoration:none}
   to{ transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
 }
 
-/* Detalles premium */
+/* Divider + stats */
 @media (prefers-reduced-motion: no-preference){
   .mSection, .mCoverWrap, .mGallery{ animation: fadeInUp .35s ease both; }
 }
@@ -468,9 +487,7 @@ a{color:inherit;text-decoration:none}
 .mStat .v{ font-size: 18px; font-weight: 800; letter-spacing: -.2px; margin: 0; }
 .mStat .s{ font-size: 12px; opacity: .75; margin: 6px 0 0; }
 
-/* =========================
-   (1) Welcome Gate
-   ========================= */
+/* Welcome + Loader */
 .wGate{
   position:fixed;
   inset:0;
@@ -479,11 +496,7 @@ a{color:inherit;text-decoration:none}
   place-items:center;
   padding:18px;
 }
-.wGate__backdrop{
-  position:absolute;
-  inset:0;
-  background:rgba(0,0,0,.75);
-}
+.wGate__backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.75); }
 .wGate__card{
   position:relative;
   width:min(680px, 92vw);
@@ -501,20 +514,9 @@ a{color:inherit;text-decoration:none}
   background:rgba(214,178,107,.10);
   margin-bottom:10px;
 }
-.wGate__title{
-  margin:0 0 6px;
-  letter-spacing:-.2px;
-}
-.wGate__text{
-  margin:0 0 14px;
-  color:rgba(238,241,247,.88);
-  line-height:1.55;
-}
-.wGate__actions{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-}
+.wGate__title{ margin:0 0 6px; letter-spacing:-.2px; }
+.wGate__text{ margin:0 0 14px; color:rgba(238,241,247,.88); line-height:1.55; }
+.wGate__actions{ display:flex; gap:10px; flex-wrap:wrap; }
 .wGate__btn{
   padding:10px 14px;
   border-radius:14px;
@@ -524,20 +526,10 @@ a{color:inherit;text-decoration:none}
   cursor:pointer;
   font-weight:900;
 }
-.wGate__btn.primary{
-  border:1px solid rgba(214,178,107,.35);
-  background:rgba(214,178,107,.14);
-}
+.wGate__btn.primary{ border:1px solid rgba(214,178,107,.35); background:rgba(214,178,107,.14); }
 .wGate__btn.ghost{ background:transparent; }
-.wGate__hint{
-  margin:12px 0 0;
-  font-size:12px;
-  color:rgba(238,241,247,.70);
-}
+.wGate__hint{ margin:12px 0 0; font-size:12px; color:rgba(238,241,247,.70); }
 
-/* =========================
-   (2) Loader
-   ========================= */
 .pLoader{
   position:fixed;
   inset:0;
@@ -568,26 +560,13 @@ a{color:inherit;text-decoration:none}
   animation: spin 1s linear infinite;
 }
 @keyframes spin{ to{ transform: rotate(360deg); } }
-.pLoader__txt{
-  display:grid;
-  gap:4px;
-}
+.pLoader__txt{ display:grid; gap:4px; }
 .pLoader__txt strong{ font-size:14px; }
-.pLoader__txt span{
-  font-size:12px;
-  color:rgba(238,241,247,.75);
-}
+.pLoader__txt span{ font-size:12px; color:rgba(238,241,247,.75); }
 
-/* =========================
-   (4) Lightbox NAV (prev/next)
-   ========================= */
-.lb__media{
-  position: relative;
-  display: grid;
-  align-items: center;
-}
+/* Lightbox nav arrows */
+.lb__media{ position: relative; display: grid; align-items: center; }
 
-/* ✅ reforzado: siempre clickeable encima */
 .lbNav{
   position:absolute;
   top:50%;
@@ -609,30 +588,18 @@ a{color:inherit;text-decoration:none}
   pointer-events:auto;
   touch-action: manipulation;
 }
-.lbNav:hover{
-  background:rgba(214,178,107,.12);
-  transform: translateY(-50%) scale(1.03);
-}
+.lbNav:hover{ background:rgba(214,178,107,.12); transform: translateY(-50%) scale(1.03); }
 .lbNav:active{ transform: translateY(-50%) scale(.99); }
-
 .lbNav--prev{ left:10px; }
 .lbNav--next{ right:10px; }
-
 @media (max-width: 520px){
-  .lbNav{
-    width:42px;
-    height:42px;
-    border-radius:14px;
-    font-size:28px;
-  }
+  .lbNav{ width:42px; height:42px; border-radius:14px; font-size:28px; }
   .lbNav--prev{ left:8px; }
   .lbNav--next{ right:8px; }
 }
 .lbNav[hidden]{ display:none !important; }
 
-/* =========================
-   (5) Audio premium
-   ========================= */
+/* Audio */
 .mAudio{
   border:1px solid rgba(255,255,255,.10);
   background: rgba(255,255,255,.03);
@@ -652,9 +619,7 @@ a{color:inherit;text-decoration:none}
 .mAudioBtn:hover{ background: rgba(214,178,107,.18); }
 .mAudioBtn:active{ transform: scale(.99); }
 
-/* =========================
-   (8) Accesibilidad
-   ========================= */
+/* Accesibilidad */
 :focus-visible{
   outline: 2px solid rgba(214,178,107,.75);
   outline-offset: 3px;
