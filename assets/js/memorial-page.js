@@ -554,7 +554,7 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
-  const STEP = 2; // ✅ flechas avanzan/retroceden 2 fotos por click
+  const STEP = 1; // ✅ flechas avanzan/retroceden 2 fotos por click
 
   let canSeeHidden = false;
 
