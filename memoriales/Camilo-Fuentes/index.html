@@ -50,20 +50,14 @@
 
       <strong>Imprime tu Recuerdo</strong>
 
-      <!-- (3) Compartir -->
+      <!-- Compartir -->
       <button id="btnShare" class="mTopBtn" type="button" title="Compartir memorial" aria-label="Compartir memorial">
         Compartir
       </button>
     </div>
   </header>
 
-  <!-- ✅ Botón flotante "Subir" -->
-  <button id="btnToTop" class="mToTop" type="button" aria-label="Subir al inicio" hidden>↑</button>
-
   <main class="mWrap">
-
-    <!-- ✅ ANCLA INICIO -->
-    <div id="inicio" class="mAnchor"></div>
 
     <!-- Portada -->
     <div class="mCoverWrap" id="coverWrap">
@@ -71,17 +65,18 @@
       <img id="cover" class="mCover" alt="">
     </div>
 
-    <!-- ✅ MENU ELEGANTE (debajo de la portada, NO sticky) -->
-    <nav class="mCat" aria-label="Secciones del memorial">
-      <a class="mCat__btn" href="#inicio">Inicio</a>
-      <a class="mCat__btn" href="#frases">Frases</a>
-      <a class="mCat__btn" href="#huella">Huella</a>
-      <a class="mCat__btn" href="#fotos">Fotos</a>
-      <a class="mCat__btn" href="#video">Video</a>
-      <a class="mCat__btn" href="#audio">Audio</a>
+    <!-- ✅ Menú bonito bajo la portada (sin barra grande, no sticky) -->
+    <nav class="mCat" aria-label="Navegación del memorial">
+      <button class="mCat__btn" type="button" data-go="#top">Inicio</button>
+      <button class="mCat__btn" type="button" data-go="#quotes">Frases</button>
+      <button class="mCat__btn" type="button" data-go="#statsSection">Huella</button>
+      <button class="mCat__btn" type="button" data-go="#gallerySection">Fotos</button>
+      <button class="mCat__btn" type="button" data-go="#videoSection">Video</button>
+      <button class="mCat__btn" type="button" data-go="#audioSection">Audio</button>
     </nav>
 
     <!-- Datos principales -->
+    <div id="top"></div>
     <h1 id="name" class="mName"></h1>
     <p id="dates" class="mDates"></p>
     <p id="bio" class="mBio"></p>
@@ -107,7 +102,7 @@
       <p class="meta" id="modRoleText" style="margin-top:6px"></p>
       <p id="authError" class="authError" hidden></p>
 
-      <!-- UID -->
+      <!-- UID (se muestra solo al iniciar sesión) -->
       <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
         <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
           <span>Tu UID:</span>
@@ -129,14 +124,8 @@
       <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
     </section>
 
-    <!-- ✅ ANCLA FRASES -->
-    <div id="frases" class="mAnchor"></div>
-
     <!-- Contenido emocional dinámico -->
     <div id="extraBlocks"></div>
-
-    <!-- ✅ ANCLA HUELLA -->
-    <div id="huella" class="mAnchor"></div>
 
     <section class="mSection" id="statsSection" hidden>
       <h2>Huella de cariño</h2>
@@ -144,18 +133,13 @@
       <div class="mStats" id="statsGrid"></div>
     </section>
 
-    <!-- ✅ ANCLA FOTOS -->
-    <div id="fotos" class="mAnchor"></div>
-
     <!-- Galería -->
-    <section class="mSection">
+    <section class="mSection" id="gallerySection">
       <h2>Galería</h2>
       <div id="gallery" class="mGallery"></div>
     </section>
 
-    <!-- ✅ ANCLA VIDEO -->
-    <div id="video" class="mAnchor"></div>
-
+    <!-- Video -->
     <section class="mSection" id="videoSection" hidden>
       <h2>Video</h2>
       <div class="mVideo">
@@ -163,9 +147,7 @@
       </div>
     </section>
 
-    <!-- ✅ ANCLA AUDIO -->
-    <div id="audio" class="mAnchor"></div>
-
+    <!-- Audio -->
     <section class="mSection" id="audioSection" hidden>
       <h2>Audio</h2>
 
@@ -180,6 +162,9 @@
     </section>
 
   </main>
+
+  <!-- ✅ Botón subir -->
+  <button id="toTop" class="toTop" type="button" aria-label="Subir al inicio">↑</button>
 
   <!-- LIGHTBOX PRO -->
   <div id="lightbox" class="lb" hidden>
