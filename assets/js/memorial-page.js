@@ -79,10 +79,8 @@ function getMemorialId(){
   if (mid) return mid;
 
   const parts = location.pathname.split("/").filter(Boolean);
-
   const idxEs = parts.indexOf("memoriales");
   if (idxEs >= 0 && parts[idxEs + 1]) return parts[idxEs + 1];
-
   const idxEn = parts.indexOf("memorials");
   if (idxEn >= 0 && parts[idxEn + 1]) return parts[idxEn + 1];
 
@@ -163,6 +161,79 @@ function showAuthError(msg){
   }
   box.hidden = false;
   box.textContent = msg;
+}
+
+/* ---------------- Loader (2) ---------------- */
+function showLoader(){
+  const l = document.getElementById("pageLoader");
+  if (!l) return;
+  l.hidden = false;
+}
+function hideLoader(){
+  const l = document.getElementById("pageLoader");
+  if (!l) return;
+  l.hidden = true;
+}
+
+/* ---------------- Welcome gate (1) ---------------- */
+function setupWelcomeGate(memorialId){
+  const gate = document.getElementById("welcomeGate");
+  const enter = document.getElementById("welcomeEnter");
+  const skip = document.getElementById("welcomeSkip");
+  if (!gate || !enter || !skip) return;
+
+  const key = `welcome_${memorialId}_${new Date().toISOString().slice(0,10)}`;
+  if (localStorage.getItem(key)) return;
+
+  gate.hidden = false;
+  document.body.style.overflow = "hidden";
+
+  const close = () => {
+    localStorage.setItem(key, "1");
+    gate.hidden = true;
+    document.body.style.overflow = "";
+  };
+
+  enter.addEventListener("click", close);
+  skip.addEventListener("click", close);
+
+  gate.addEventListener("click", (e) => {
+    if (e.target?.classList?.contains("welcomeBackdrop")) close();
+  });
+}
+
+/* ---------------- Share (3) ---------------- */
+function setupShare(){
+  const btn = document.getElementById("btnShare");
+  if (!btn) return;
+
+  const shareUrl = location.href;
+  btn.addEventListener("click", async () => {
+    try{
+      if (navigator.share){
+        await navigator.share({
+          title: document.title || "Memorial",
+          text: "Te comparto este memorial.",
+          url: shareUrl
+        });
+        return;
+      }
+    }catch(e){
+      // si el usuario cancela, no hacemos nada
+      return;
+    }
+
+    // fallback: copiar al portapapeles
+    try{
+      await navigator.clipboard.writeText(shareUrl);
+      const old = btn.textContent;
+      btn.textContent = "Copiado ✅";
+      setTimeout(() => btn.textContent = old || "Compartir", 1200);
+    }catch(e){
+      // último fallback: prompt
+      window.prompt("Copia este enlace:", shareUrl);
+    }
+  });
 }
 
 /* ---------------- Auth persistence + login ---------------- */
@@ -250,29 +321,36 @@ function setupUidRow(){
   });
 }
 
-/* ---------------- Mostrar acceso moderación + rol ---------------- */
+/* ---------------- Mostrar MOD/ADMIN + rol ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
 
   const modEntry = document.getElementById("modEntry");
+  const modPanel = document.getElementById("modPanel");
   const roleText = document.getElementById("modRoleText");
 
   if (modEntry) modEntry.hidden = true;
+  if (modPanel) modPanel.hidden = true;
 
   onAuthStateChanged(auth, async (user) => {
     if (!user){
       if (modEntry) modEntry.hidden = true;
+      if (modPanel) modPanel.hidden = true;
       if (roleText) roleText.textContent = "";
       return;
     }
 
     let role = "none";
-    try{ role = await getRole(memorialId, user.uid); }catch(e){ role = "none"; }
+    try{ role = await getRole(memorialId, user.uid); }
+    catch(e){ role = "none"; }
 
     if (roleText) roleText.textContent = `Rol: ${roleLabel(role)}`;
 
     const canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
+    const canPromote  = (role === "global-admin" || role === "memorial-admin");
+
     if (modEntry) modEntry.hidden = !canModerate;
+    if (modPanel) modPanel.hidden = !canPromote;
   });
 }
 
@@ -444,7 +522,7 @@ function setupGlobalCandles(memorialId){
   });
 }
 
-/* ---------------- Lightbox + comentarios + reacciones + FLECHAS OK ---------------- */
+/* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
 
@@ -453,8 +531,6 @@ function setupLightboxFirebase(gallery){
   const lb = document.getElementById("lightbox");
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
-  const lbPrev = document.getElementById("lbPrev");
-  const lbNext = document.getElementById("lbNext");
 
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
@@ -561,12 +637,6 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      },
-      (err) => {
-        console.warn("comments snapshot error:", err?.code || err);
-        if (commentsList){
-          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
-        }
       }
     );
 
@@ -583,8 +653,7 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      },
-      (err) => console.warn("reactions snapshot error:", err?.code || err)
+      }
     );
   }
 
@@ -598,36 +667,6 @@ function setupLightboxFirebase(gallery){
     unsubReactions = null;
   }
 
-  /* ✅ Flechas SIEMPRE funcionan */
-  lbPrev?.addEventListener("click", () => {
-    if (lb.hidden) return;
-    openLb((current - 1 + gallery.length) % gallery.length);
-  });
-  lbNext?.addEventListener("click", () => {
-    if (lb.hidden) return;
-    openLb((current + 1) % gallery.length);
-  });
-
-  /* Teclado */
-  window.addEventListener("keydown", (e) => {
-    if (lb.hidden) return;
-    if (e.key === "Escape") closeLb();
-    if (e.key === "ArrowLeft") openLb((current - 1 + gallery.length) % gallery.length);
-    if (e.key === "ArrowRight") openLb((current + 1) % gallery.length);
-  });
-
-  /* Click fondo */
-  lb.addEventListener("click", (e) => {
-    if (e.target === lb) closeLb();
-  });
-
-  lbClose.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    closeLb();
-  });
-
-  /* abrir desde galería */
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -637,6 +676,21 @@ function setupLightboxFirebase(gallery){
     });
   }
 
+  lbClose.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeLb();
+  });
+
+  lb.addEventListener("click", (e) => {
+    if (e.target === lb) closeLb();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (lb.hidden) return;
+    if (e.key === "Escape") closeLb();
+  });
+
   btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
   btnLogout?.addEventListener("click", async () => {
     showAuthError("");
@@ -644,7 +698,6 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
-  /* comentar */
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
@@ -672,8 +725,121 @@ function setupLightboxFirebase(gallery){
     }
   });
 
-  /* reacciones + contador global */
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
-      if (!user
+      if (!user){
+        showAuthError("Debes iniciar sesión para reaccionar.");
+        return;
+      }
+
+      const emo = btn.dataset.r;
+      const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
+      const sRef = statsDoc(memorialId);
+
+      try{
+        await runTransaction(db, async (tx) => {
+          const rs = await tx.get(reactionRef);
+          const data = rs.exists() ? (rs.data() || {}) : {};
+          const prev = Number(data[emo] || 0);
+          const next = (prev === 1) ? 0 : 1;
+
+          tx.set(reactionRef, { [emo]: next, updatedAt: serverTimestamp() }, { merge: true });
+
+          const delta = next - prev;
+          tx.set(sRef, { reactions: increment(delta), updatedAt: serverTimestamp() }, { merge: true });
+        });
+      }catch(err){
+        showAuthError(`No se pudo reaccionar. Error: ${err?.code || "desconocido"}`);
+      }
+    });
+  });
+}
+
+/* ---------------- Main ---------------- */
+async function loadMemorial(){
+  showLoader();
+
+  await initAuthPersistence();
+  setupGlobalAuthUI();
+  setupUidRow();
+  setupModeratorEntry();
+  setupShare();
+
+  try{ await getRedirectResult(auth); }catch(e){}
+
+  const memorialId = getMemorialId();
+
+  setupWelcomeGate(memorialId);
+
+  await ensureStats(memorialId);
+  await bumpVisit(memorialId);
+  setupStatsLive(memorialId);
+
+  const res = await fetch("data.json", { cache: "no-store" });
+  if (!res.ok) throw new Error("No se pudo cargar data.json");
+  const d = await res.json();
+
+  document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
+
+  const cover = document.getElementById("cover");
+  if (cover){
+    cover.src = d.cover || "";
+    cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
+  }
+  const coverBg = document.getElementById("coverBg");
+  if (coverBg){
+    coverBg.src = d.cover || "";
+  }
+
+  const nameEl = document.getElementById("name");
+  const datesEl = document.getElementById("dates");
+  const bioEl = document.getElementById("bio");
+  if (nameEl) nameEl.textContent = d.name || "";
+  if (datesEl) datesEl.textContent = d.dates || "";
+  if (bioEl) bioEl.textContent = d.bio || "";
+
+  injectEmotionalBlocks(d);
+
+  const items = Array.isArray(d.gallery) ? d.gallery : [];
+  const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
+  const g = document.getElementById("gallery");
+  if (g){
+    g.innerHTML = gallery.map((it, i) => `
+      <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
+        <div class="mThumbWrap">
+          <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+          ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+        </div>
+      </button>
+    `).join("");
+  }
+
+  if (d.video?.youtubeEmbedUrl){
+    const vs = document.getElementById("videoSection");
+    const vf = document.getElementById("videoFrame");
+    if (vs) vs.hidden = false;
+    if (vf){
+      vf.src = d.video.youtubeEmbedUrl;
+      vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+    }
+  }
+
+  if (d.audio?.src){
+    const as = document.getElementById("audioSection");
+    const ap = document.getElementById("audioPlayer");
+    if (as) as.hidden = false;
+    if (ap) ap.src = d.audio.src;
+  }
+
+  setupLightboxFirebase(gallery);
+  setupGlobalCandles(memorialId);
+
+  renderStats();
+  hideLoader();
+}
+
+loadMemorial().catch((e) => {
+  console.error(e);
+  hideLoader();
+});
