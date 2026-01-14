@@ -233,6 +233,24 @@ function setupShare(){
   });
 }
 
+/* ---------------- Botón Subir (nuevo) ---------------- */
+function setupToTop(){
+  const btn = document.getElementById("btnToTop");
+  if (!btn) return;
+
+  const toggle = () => {
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    btn.hidden = y < 500;
+  };
+
+  btn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  window.addEventListener("scroll", toggle, { passive:true });
+  toggle();
+}
+
 /* ---------------- Auth persistence + login ---------------- */
 async function initAuthPersistence(){
   try{
@@ -522,7 +540,6 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
-
   let canSeeHidden = false;
 
   const lb = document.getElementById("lightbox");
@@ -580,10 +597,7 @@ function setupLightboxFirebase(gallery){
 
   onAuthStateChanged(auth, async (user) => {
     setAuthUI(user);
-    if (!user){
-      canSeeHidden = false;
-      return;
-    }
+    if (!user){ canSeeHidden = false; return; }
     try{
       const role = await getRole(memorialId, user.uid);
       canSeeHidden = (role !== "none");
@@ -595,7 +609,7 @@ function setupLightboxFirebase(gallery){
   function normalizeIndex(i){
     const n = gallery.length || 0;
     if (!n) return 0;
-    return (i % n + n) % n; // wrap
+    return (i % n + n) % n;
   }
 
   function updateNavVisibility(){
@@ -610,7 +624,6 @@ function setupLightboxFirebase(gallery){
 
     lbImg.src = gallery[current].src;
 
-    // Pre-carga suave (siguiente y anterior)
     const next = gallery[normalizeIndex(current + 1)]?.src;
     const prev = gallery[normalizeIndex(current - 1)]?.src;
     [next, prev].forEach((src) => {
@@ -632,12 +645,10 @@ function setupLightboxFirebase(gallery){
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
-    // COMMENTS
     unsubComments = onSnapshot(
       query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
-
         if (snap.empty){
           commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
           return;
@@ -667,16 +678,9 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      },
-      (err) => {
-        console.warn("comments snapshot error:", err?.code || err);
-        if (commentsList){
-          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
-        }
       }
     );
 
-    // REACTIONS
     unsubReactions = onSnapshot(
       reactionsCol(memorialId, current),
       (snap) => {
@@ -690,8 +694,7 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      },
-      (err) => console.warn("reactions snapshot error:", err?.code || err)
+      }
     );
   }
 
@@ -766,7 +769,6 @@ function setupLightboxFirebase(gallery){
     );
   }
 
-  // Abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -776,25 +778,14 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  // ✅ Flechas: click + pointerdown (más robusto en móvil)
-  const prevHandler = (e) => {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
-    if (!lb.hidden) goTo(current - 1);
-  };
-  const nextHandler = (e) => {
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
-    if (!lb.hidden) goTo(current + 1);
-  };
+  const prevHandler = (e) => { e?.preventDefault?.(); e?.stopPropagation?.(); if (!lb.hidden) goTo(current - 1); };
+  const nextHandler = (e) => { e?.preventDefault?.(); e?.stopPropagation?.(); if (!lb.hidden) goTo(current + 1); };
 
   lbPrev?.addEventListener("click", prevHandler);
   lbNext?.addEventListener("click", nextHandler);
-
   lbPrev?.addEventListener("pointerdown", prevHandler);
   lbNext?.addEventListener("pointerdown", nextHandler);
 
-  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -805,7 +796,6 @@ function setupLightboxFirebase(gallery){
     if (e.target === lb) closeLb();
   });
 
-  // Teclado: ESC cierra, flechas navegan
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
@@ -813,7 +803,6 @@ function setupLightboxFirebase(gallery){
     if (e.key === "ArrowRight") goTo(current + 1);
   });
 
-  // Swipe móvil (sobre la imagen)
   let tStartX = 0, tLastX = 0, tActive = false;
   const SWIPE_MIN = 40;
 
@@ -834,12 +823,10 @@ function setupLightboxFirebase(gallery){
     tActive = false;
     const dx = tLastX - tStartX;
     if (Math.abs(dx) < SWIPE_MIN) return;
-
     if (dx > 0) goTo(current - 1);
     else goTo(current + 1);
   }, { passive: true });
 
-  // Auth buttons lightbox
   btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
   btnLogout?.addEventListener("click", async () => {
     showAuthError("");
@@ -847,13 +834,9 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
-  // Comentar
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
-    if (!user){
-      showAuthError("Debes iniciar sesión para comentar.");
-      return;
-    }
+    if (!user){ showAuthError("Debes iniciar sesión para comentar."); return; }
 
     const text = (commentText?.value || "").trim();
     if (!text) return;
@@ -868,21 +851,16 @@ function setupLightboxFirebase(gallery){
       });
 
       await bumpStat(memorialId, "comments", 1);
-
       if (commentText) commentText.value = "";
     }catch(err){
       showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
     }
   });
 
-  // Reacciones
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
-      if (!user){
-        showAuthError("Debes iniciar sesión para reaccionar.");
-        return;
-      }
+      if (!user){ showAuthError("Debes iniciar sesión para reaccionar."); return; }
 
       const emo = btn.dataset.r;
       const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
@@ -916,6 +894,7 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
   setupShare();
+  setupToTop();
 
   try{ await getRedirectResult(auth); }catch(e){}
 
@@ -939,9 +918,7 @@ async function loadMemorial(){
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
   }
   const coverBg = document.getElementById("coverBg");
-  if (coverBg){
-    coverBg.src = d.cover || "";
-  }
+  if (coverBg) coverBg.src = d.cover || "";
 
   const nameEl = document.getElementById("name");
   const datesEl = document.getElementById("dates");
@@ -981,7 +958,6 @@ async function loadMemorial(){
     const ap = document.getElementById("audioPlayer");
     if (as) as.hidden = false;
     if (ap) ap.src = d.audio.src;
-
     setupAudioUX();
   }
 
@@ -999,9 +975,7 @@ function setupAudioUX(){
 
   try{ ap.volume = 0.25; }catch(e){}
 
-  const setLabel = () => {
-    btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar";
-  };
+  const setLabel = () => { btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar"; };
 
   btn.addEventListener("click", async () => {
     try{
