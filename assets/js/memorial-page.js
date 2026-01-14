@@ -532,6 +532,9 @@ function setupLightboxFirebase(gallery){
   const lbImg = document.getElementById("lbImg");
   const lbClose = document.getElementById("lbClose");
 
+  const lbPrev = document.getElementById("lbPrev");
+  const lbNext = document.getElementById("lbNext");
+
   const btnLogin = document.getElementById("btnLogin");
   const btnLogout = document.getElementById("btnLogout");
   const userInfo = document.getElementById("userInfo");
@@ -592,22 +595,132 @@ function setupLightboxFirebase(gallery){
     }
   });
 
+  function normalizeIndex(i){
+    const n = gallery.length || 0;
+    if (!n) return 0;
+    return (i % n + n) % n; // wrap
+  }
+
+  function updateNavVisibility(){
+    const n = gallery.length || 0;
+    if (lbPrev) lbPrev.hidden = n <= 1;
+    if (lbNext) lbNext.hidden = n <= 1;
+  }
+
+  function setImage(i){
+    current = normalizeIndex(i);
+    if (!gallery[current]?.src) return;
+
+    lbImg.src = gallery[current].src;
+
+    // Pre-carga suave (siguiente y anterior) para que sea instantáneo
+    const next = gallery[normalizeIndex(current + 1)]?.src;
+    const prev = gallery[normalizeIndex(current - 1)]?.src;
+    [next, prev].forEach((src) => {
+      if (!src) return;
+      const im = new Image();
+      im.src = src;
+    });
+  }
+
   async function openLb(i){
     if (!gallery[i]?.src) return;
-    current = i;
 
-    lbImg.src = gallery[i].src;
+    updateNavVisibility();
+    setImage(i);
+
     lb.hidden = false;
     document.body.style.overflow = "hidden";
 
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
+    // COMMENTS
     unsubComments = onSnapshot(
-      query(commentsCol(memorialId, i), orderBy("createdAt", "desc")),
+      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
 
+        if (snap.empty){
+          commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
+          return;
+        }
+
+        const rendered = snap.docs
+          .map(x => {
+            const c = x.data() || {};
+            const hidden = !!c.hidden;
+            if (hidden && !canSeeHidden) return "";
+
+            const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
+            const badge = hidden ? `<div class="lb__hint">🛡️ Oculto</div>` : "";
+
+            return `
+              <div class="cItem">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+                  <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
+                  ${badge}
+                </div>
+                <div>${escapeHtml(c.text || "")}</div>
+                <div class="cMeta">${escapeHtml(ts)}</div>
+              </div>
+            `;
+          })
+          .filter(Boolean)
+          .join("");
+
+        commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
+      },
+      (err) => {
+        console.warn("comments snapshot error:", err?.code || err);
+        if (commentsList){
+          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
+        }
+      }
+    );
+
+    // REACTIONS
+    unsubReactions = onSnapshot(
+      reactionsCol(memorialId, current),
+      (snap) => {
+        const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
+        snap.forEach(docu => {
+          const r = docu.data() || {};
+          for (const k of Object.keys(sum)) sum[k] += Number(r[k] || 0);
+        });
+        if (totals["❤️"]) totals["❤️"].textContent = String(sum["❤️"]);
+        if (totals["🙏"]) totals["🙏"].textContent = String(sum["🙏"]);
+        if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
+        if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
+        if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
+      },
+      (err) => console.warn("reactions snapshot error:", err?.code || err)
+    );
+  }
+
+  function closeLb(){
+    lb.hidden = true;
+    lbImg.src = "";
+    document.body.style.overflow = "";
+
+    if (unsubComments) unsubComments();
+    if (unsubReactions) unsubReactions();
+    unsubComments = null;
+    unsubReactions = null;
+  }
+
+  async function goTo(i){
+    if (!gallery.length) return;
+    setImage(i);
+
+    // refrescar listeners de firestore con el nuevo index
+    if (unsubComments) unsubComments();
+    if (unsubReactions) unsubReactions();
+
+    unsubComments = onSnapshot(
+      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
+      (snap) => {
+        if (!commentsList) return;
         if (snap.empty){
           commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
           return;
@@ -641,7 +754,7 @@ function setupLightboxFirebase(gallery){
     );
 
     unsubReactions = onSnapshot(
-      reactionsCol(memorialId, i),
+      reactionsCol(memorialId, current),
       (snap) => {
         const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
         snap.forEach(docu => {
@@ -657,16 +770,7 @@ function setupLightboxFirebase(gallery){
     );
   }
 
-  function closeLb(){
-    lb.hidden = true;
-    lbImg.src = "";
-    document.body.style.overflow = "";
-    if (unsubComments) unsubComments();
-    if (unsubReactions) unsubReactions();
-    unsubComments = null;
-    unsubReactions = null;
-  }
-
+  // Abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -676,6 +780,11 @@ function setupLightboxFirebase(gallery){
     });
   }
 
+  // Botones prev/next
+  lbPrev?.addEventListener("click", () => { if (!lb.hidden) goTo(current - 1); });
+  lbNext?.addEventListener("click", () => { if (!lb.hidden) goTo(current + 1); });
+
+  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -686,11 +795,41 @@ function setupLightboxFirebase(gallery){
     if (e.target === lb) closeLb();
   });
 
+  // Teclado: ESC cierra, flechas navegan
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
+    if (e.key === "ArrowLeft") goTo(current - 1);
+    if (e.key === "ArrowRight") goTo(current + 1);
   });
 
+  // Swipe móvil (sobre la imagen)
+  let tStartX = 0, tLastX = 0, tActive = false;
+  const SWIPE_MIN = 40;
+
+  lbImg.addEventListener("touchstart", (e) => {
+    if (lb.hidden) return;
+    tActive = true;
+    tStartX = e.touches[0].clientX;
+    tLastX = tStartX;
+  }, { passive: true });
+
+  lbImg.addEventListener("touchmove", (e) => {
+    if (!tActive) return;
+    tLastX = e.touches[0].clientX;
+  }, { passive: true });
+
+  lbImg.addEventListener("touchend", () => {
+    if (!tActive) return;
+    tActive = false;
+    const dx = tLastX - tStartX;
+    if (Math.abs(dx) < SWIPE_MIN) return;
+
+    if (dx > 0) goTo(current - 1);
+    else goTo(current + 1);
+  }, { passive: true });
+
+  // Auth buttons lightbox
   btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
   btnLogout?.addEventListener("click", async () => {
     showAuthError("");
@@ -698,6 +837,7 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
+  // Comentar
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
@@ -725,6 +865,7 @@ function setupLightboxFirebase(gallery){
     }
   });
 
+  // Reacciones
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -825,18 +966,50 @@ async function loadMemorial(){
     }
   }
 
-  if (d.audio?.src){
-    const as = document.getElementById("audioSection");
-    const ap = document.getElementById("audioPlayer");
-    if (as) as.hidden = false;
-    if (ap) ap.src = d.audio.src;
-  }
+if (d.audio?.src){
+  const as = document.getElementById("audioSection");
+  const ap = document.getElementById("audioPlayer");
+  if (as) as.hidden = false;
+  if (ap) ap.src = d.audio.src;
 
+  setupAudioUX();
+}
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
   renderStats();
   hideLoader();
+}
+function setupAudioUX(){
+  const ap = document.getElementById("audioPlayer");
+  const btn = document.getElementById("audioToggle");
+  if (!ap || !btn) return;
+
+  // Volumen inicial suave (25%)
+  try{
+    ap.volume = 0.25;
+  }catch(e){}
+
+  const setLabel = () => {
+    btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar";
+  };
+
+  btn.addEventListener("click", async () => {
+    try{
+      if (ap.paused) await ap.play();
+      else ap.pause();
+      setLabel();
+    }catch(e){
+      // si el navegador bloquea play por interacción, el click ya cuenta como interacción
+      setLabel();
+    }
+  });
+
+  ap.addEventListener("play", setLabel);
+  ap.addEventListener("pause", setLabel);
+  ap.addEventListener("ended", setLabel);
+
+  setLabel();
 }
 
 loadMemorial().catch((e) => {
