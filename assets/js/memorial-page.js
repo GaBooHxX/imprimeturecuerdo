@@ -163,7 +163,7 @@ function showAuthError(msg){
   box.textContent = msg;
 }
 
-/* ---------------- Loader (2) ---------------- */
+/* ---------------- Loader ---------------- */
 function showLoader(){
   const l = document.getElementById("pageLoader");
   if (!l) return;
@@ -175,7 +175,7 @@ function hideLoader(){
   l.hidden = true;
 }
 
-/* ---------------- Welcome gate (1) ---------------- */
+/* ---------------- Welcome gate ---------------- */
 function setupWelcomeGate(memorialId){
   const gate = document.getElementById("welcomeGate");
   const enter = document.getElementById("welcomeEnter");
@@ -202,7 +202,7 @@ function setupWelcomeGate(memorialId){
   });
 }
 
-/* ---------------- Share (3) ---------------- */
+/* ---------------- Share ---------------- */
 function setupShare(){
   const btn = document.getElementById("btnShare");
   if (!btn) return;
@@ -233,22 +233,36 @@ function setupShare(){
   });
 }
 
-/* ---------------- Botón Subir (nuevo) ---------------- */
+/* ---------------- Navegación interna (menú chips) ---------------- */
+function setupInPageNav(){
+  document.querySelectorAll("[data-go]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-go");
+      if (!target) return;
+      const el = document.querySelector(target);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+/* ---------------- Botón subir ---------------- */
 function setupToTop(){
-  const btn = document.getElementById("btnToTop");
+  const btn = document.getElementById("toTop");
   if (!btn) return;
 
-  const toggle = () => {
+  const showAt = 650;
+  const onScroll = () => {
     const y = window.scrollY || document.documentElement.scrollTop || 0;
-    btn.hidden = y < 500;
+    btn.classList.toggle("show", y > showAt);
   };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
 
   btn.addEventListener("click", () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
-
-  window.addEventListener("scroll", toggle, { passive:true });
-  toggle();
 }
 
 /* ---------------- Auth persistence + login ---------------- */
@@ -386,7 +400,7 @@ function injectEmotionalBlocks(d){
   ` : "";
 
   const quotesHtml = quotes.length ? `
-    <section class="mSection">
+    <section class="mSection" id="quotes">
       <h2>Frases</h2>
       <div class="mQuotes">
         ${quotes.map(q => `<div class="mQuote">“${escapeHtml(q)}”</div>`).join("")}
@@ -420,7 +434,7 @@ function injectEmotionalBlocks(d){
     return `
       <section class="mSection">
         <h2>${title}</h2>
-        <p class="meta">${escapeHtml(sec.content || "")}</p>
+        <p class="meta mText">${escapeHtml(sec.content || "")}</p>
       </section>
     `;
   }).join("");
@@ -540,6 +554,8 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
+  const STEP = 2; // ✅ flechas avanzan/retroceden 2 fotos por click
+
   let canSeeHidden = false;
 
   const lb = document.getElementById("lightbox");
@@ -597,7 +613,10 @@ function setupLightboxFirebase(gallery){
 
   onAuthStateChanged(auth, async (user) => {
     setAuthUI(user);
-    if (!user){ canSeeHidden = false; return; }
+    if (!user){
+      canSeeHidden = false;
+      return;
+    }
     try{
       const role = await getRole(memorialId, user.uid);
       canSeeHidden = (role !== "none");
@@ -624,8 +643,9 @@ function setupLightboxFirebase(gallery){
 
     lbImg.src = gallery[current].src;
 
-    const next = gallery[normalizeIndex(current + 1)]?.src;
-    const prev = gallery[normalizeIndex(current - 1)]?.src;
+    // precarga next/prev
+    const next = gallery[normalizeIndex(current + STEP)]?.src;
+    const prev = gallery[normalizeIndex(current - STEP)]?.src;
     [next, prev].forEach((src) => {
       if (!src) return;
       const im = new Image();
@@ -633,15 +653,7 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  async function openLb(i){
-    if (!gallery[i]?.src) return;
-
-    updateNavVisibility();
-    setImage(i);
-
-    lb.hidden = false;
-    document.body.style.overflow = "hidden";
-
+  function subscribeForIndex(){
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
@@ -649,6 +661,7 @@ function setupLightboxFirebase(gallery){
       query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
+
         if (snap.empty){
           commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
           return;
@@ -678,6 +691,12 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
+      },
+      (err) => {
+        console.warn("comments snapshot error:", err?.code || err);
+        if (commentsList){
+          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
+        }
       }
     );
 
@@ -694,8 +713,21 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      }
+      },
+      (err) => console.warn("reactions snapshot error:", err?.code || err)
     );
+  }
+
+  async function openLb(i){
+    if (!gallery[i]?.src) return;
+
+    updateNavVisibility();
+    setImage(i);
+
+    lb.hidden = false;
+    document.body.style.overflow = "hidden";
+
+    subscribeForIndex();
   }
 
   function closeLb(){
@@ -709,66 +741,13 @@ function setupLightboxFirebase(gallery){
     unsubReactions = null;
   }
 
-  async function goTo(i){
+  function goTo(i){
     if (!gallery.length) return;
     setImage(i);
-
-    if (unsubComments) unsubComments();
-    if (unsubReactions) unsubReactions();
-
-    unsubComments = onSnapshot(
-      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
-      (snap) => {
-        if (!commentsList) return;
-        if (snap.empty){
-          commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
-          return;
-        }
-
-        const rendered = snap.docs
-          .map(x => {
-            const c = x.data() || {};
-            const hidden = !!c.hidden;
-            if (hidden && !canSeeHidden) return "";
-
-            const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
-            const badge = hidden ? `<div class="lb__hint">🛡️ Oculto</div>` : "";
-
-            return `
-              <div class="cItem">
-                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-                  <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
-                  ${badge}
-                </div>
-                <div>${escapeHtml(c.text || "")}</div>
-                <div class="cMeta">${escapeHtml(ts)}</div>
-              </div>
-            `;
-          })
-          .filter(Boolean)
-          .join("");
-
-        commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      }
-    );
-
-    unsubReactions = onSnapshot(
-      reactionsCol(memorialId, current),
-      (snap) => {
-        const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
-        snap.forEach(docu => {
-          const r = docu.data() || {};
-          for (const k of Object.keys(sum)) sum[k] += Number(r[k] || 0);
-        });
-        if (totals["❤️"]) totals["❤️"].textContent = String(sum["❤️"]);
-        if (totals["🙏"]) totals["🙏"].textContent = String(sum["🙏"]);
-        if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
-        if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
-        if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      }
-    );
+    subscribeForIndex();
   }
 
+  // Abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -778,14 +757,19 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  const prevHandler = (e) => { e?.preventDefault?.(); e?.stopPropagation?.(); if (!lb.hidden) goTo(current - 1); };
-  const nextHandler = (e) => { e?.preventDefault?.(); e?.stopPropagation?.(); if (!lb.hidden) goTo(current + 1); };
+  // ✅ Flechas: saltan de 2 en 2
+  lbPrev?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!lb.hidden) goTo(current - STEP);
+  });
+  lbNext?.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!lb.hidden) goTo(current + STEP);
+  });
 
-  lbPrev?.addEventListener("click", prevHandler);
-  lbNext?.addEventListener("click", nextHandler);
-  lbPrev?.addEventListener("pointerdown", prevHandler);
-  lbNext?.addEventListener("pointerdown", nextHandler);
-
+  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -796,13 +780,15 @@ function setupLightboxFirebase(gallery){
     if (e.target === lb) closeLb();
   });
 
+  // Teclado: ESC cierra, flechas navegan (también de 2 en 2)
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
-    if (e.key === "ArrowLeft") goTo(current - 1);
-    if (e.key === "ArrowRight") goTo(current + 1);
+    if (e.key === "ArrowLeft") goTo(current - STEP);
+    if (e.key === "ArrowRight") goTo(current + STEP);
   });
 
+  // Swipe móvil
   let tStartX = 0, tLastX = 0, tActive = false;
   const SWIPE_MIN = 40;
 
@@ -823,10 +809,12 @@ function setupLightboxFirebase(gallery){
     tActive = false;
     const dx = tLastX - tStartX;
     if (Math.abs(dx) < SWIPE_MIN) return;
-    if (dx > 0) goTo(current - 1);
-    else goTo(current + 1);
+
+    if (dx > 0) goTo(current - STEP);
+    else goTo(current + STEP);
   }, { passive: true });
 
+  // Auth buttons lightbox
   btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
   btnLogout?.addEventListener("click", async () => {
     showAuthError("");
@@ -834,9 +822,13 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
+  // Comentar
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
-    if (!user){ showAuthError("Debes iniciar sesión para comentar."); return; }
+    if (!user){
+      showAuthError("Debes iniciar sesión para comentar.");
+      return;
+    }
 
     const text = (commentText?.value || "").trim();
     if (!text) return;
@@ -851,16 +843,21 @@ function setupLightboxFirebase(gallery){
       });
 
       await bumpStat(memorialId, "comments", 1);
+
       if (commentText) commentText.value = "";
     }catch(err){
       showAuthError(`No se pudo publicar. Error: ${err?.code || "desconocido"}`);
     }
   });
 
+  // Reacciones
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
-      if (!user){ showAuthError("Debes iniciar sesión para reaccionar."); return; }
+      if (!user){
+        showAuthError("Debes iniciar sesión para reaccionar.");
+        return;
+      }
 
       const emo = btn.dataset.r;
       const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
@@ -885,6 +882,33 @@ function setupLightboxFirebase(gallery){
   });
 }
 
+/* ---------------- Audio UX ---------------- */
+function setupAudioUX(){
+  const ap = document.getElementById("audioPlayer");
+  const btn = document.getElementById("audioToggle");
+  if (!ap || !btn) return;
+
+  try{ ap.volume = 0.25; }catch(e){}
+
+  const setLabel = () => { btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar"; };
+
+  btn.addEventListener("click", async () => {
+    try{
+      if (ap.paused) await ap.play();
+      else ap.pause();
+      setLabel();
+    }catch(e){
+      setLabel();
+    }
+  });
+
+  ap.addEventListener("play", setLabel);
+  ap.addEventListener("pause", setLabel);
+  ap.addEventListener("ended", setLabel);
+
+  setLabel();
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   showLoader();
@@ -894,12 +918,12 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
   setupShare();
+  setupInPageNav();
   setupToTop();
 
   try{ await getRedirectResult(auth); }catch(e){}
 
   const memorialId = getMemorialId();
-
   setupWelcomeGate(memorialId);
 
   await ensureStats(memorialId);
@@ -918,7 +942,9 @@ async function loadMemorial(){
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
   }
   const coverBg = document.getElementById("coverBg");
-  if (coverBg) coverBg.src = d.cover || "";
+  if (coverBg){
+    coverBg.src = d.cover || "";
+  }
 
   const nameEl = document.getElementById("name");
   const datesEl = document.getElementById("dates");
@@ -931,6 +957,7 @@ async function loadMemorial(){
 
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
+
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
@@ -966,32 +993,6 @@ async function loadMemorial(){
 
   renderStats();
   hideLoader();
-}
-
-function setupAudioUX(){
-  const ap = document.getElementById("audioPlayer");
-  const btn = document.getElementById("audioToggle");
-  if (!ap || !btn) return;
-
-  try{ ap.volume = 0.25; }catch(e){}
-
-  const setLabel = () => { btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar"; };
-
-  btn.addEventListener("click", async () => {
-    try{
-      if (ap.paused) await ap.play();
-      else ap.pause();
-      setLabel();
-    }catch(e){
-      setLabel();
-    }
-  });
-
-  ap.addEventListener("play", setLabel);
-  ap.addEventListener("pause", setLabel);
-  ap.addEventListener("ended", setLabel);
-
-  setLabel();
 }
 
 loadMemorial().catch((e) => {
