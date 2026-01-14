@@ -539,3 +539,98 @@ a{color:inherit;text-decoration:none}
   font-size:12px;
   color:rgba(238,241,247,.75);
 }
+
+/* =========================
+   (4) Lightbox NAV (prev/next)
+   ========================= */
+
+.lb__media{
+  position: relative;
+  display: grid;
+  align-items: center;
+}
+
+.lbNav{
+  position:absolute;
+  top:50%;
+  transform: translateY(-50%);
+  width:46px;
+  height:46px;
+  border-radius:16px;
+  border:1px solid rgba(214,178,107,.32);
+  background:rgba(0,0,0,.35);
+  color:rgba(238,241,247,.95);
+  font-size:30px;
+  line-height:1;
+  cursor:pointer;
+  z-index:2;
+  display:grid;
+  place-items:center;
+  backdrop-filter: blur(8px);
+  transition: transform .15s ease, background .15s ease, opacity .15s ease;
+}
+.lbNav:hover{
+  background:rgba(214,178,107,.12);
+  transform: translateY(-50%) scale(1.03);
+}
+.lbNav:active{ transform: translateY(-50%) scale(.99); }
+
+.lbNav--prev{ left:10px; }
+.lbNav--next{ right:10px; }
+
+/* En móvil: un poquito más compactas */
+@media (max-width: 520px){
+  .lbNav{
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    font-size:28px;
+  }
+  .lbNav--prev{ left:8px; }
+  .lbNav--next{ right:8px; }
+}
+
+/* si hay 1 sola foto, ocultamos flechas */
+.lbNav[hidden]{ display:none !important; }
+
+/* =========================
+   (5) Audio premium y respetuoso
+   ========================= */
+.mAudio{
+  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.03);
+  border-radius: 16px;
+  padding: 12px;
+}
+.mAudioBtn{
+  width:100%;
+  border-radius: 14px;
+  padding: 12px 14px;
+  border:1px solid rgba(214,178,107,.35);
+  background: rgba(214,178,107,.12);
+  color: rgba(238,241,247,.95);
+  cursor:pointer;
+  font-weight:900;
+}
+.mAudioBtn:hover{ background: rgba(214,178,107,.18); }
+.mAudioBtn:active{ transform: scale(.99); }
+/* =========================
+   (8) Accesibilidad
+   ========================= */
+
+/* Foco visible bonito (teclado) */
+:focus-visible{
+  outline: 2px solid rgba(214,178,107,.75);
+  outline-offset: 3px;
+}
+
+/* Respeta reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cSpark{ display:none !important; }
+}
