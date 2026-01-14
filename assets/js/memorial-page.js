@@ -219,18 +219,15 @@ function setupShare(){
         return;
       }
     }catch(e){
-      // si el usuario cancela, no hacemos nada
       return;
     }
 
-    // fallback: copiar al portapapeles
     try{
       await navigator.clipboard.writeText(shareUrl);
       const old = btn.textContent;
       btn.textContent = "Copiado ✅";
       setTimeout(() => btn.textContent = old || "Compartir", 1200);
     }catch(e){
-      // último fallback: prompt
       window.prompt("Copia este enlace:", shareUrl);
     }
   });
@@ -613,7 +610,7 @@ function setupLightboxFirebase(gallery){
 
     lbImg.src = gallery[current].src;
 
-    // Pre-carga suave (siguiente y anterior) para que sea instantáneo
+    // Pre-carga suave (siguiente y anterior)
     const next = gallery[normalizeIndex(current + 1)]?.src;
     const prev = gallery[normalizeIndex(current - 1)]?.src;
     [next, prev].forEach((src) => {
@@ -713,7 +710,6 @@ function setupLightboxFirebase(gallery){
     if (!gallery.length) return;
     setImage(i);
 
-    // refrescar listeners de firestore con el nuevo index
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
@@ -780,9 +776,23 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  // Botones prev/next
-  lbPrev?.addEventListener("click", () => { if (!lb.hidden) goTo(current - 1); });
-  lbNext?.addEventListener("click", () => { if (!lb.hidden) goTo(current + 1); });
+  // ✅ Flechas: click + pointerdown (más robusto en móvil)
+  const prevHandler = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!lb.hidden) goTo(current - 1);
+  };
+  const nextHandler = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+    if (!lb.hidden) goTo(current + 1);
+  };
+
+  lbPrev?.addEventListener("click", prevHandler);
+  lbNext?.addEventListener("click", nextHandler);
+
+  lbPrev?.addEventListener("pointerdown", prevHandler);
+  lbNext?.addEventListener("pointerdown", nextHandler);
 
   // Cerrar
   lbClose.addEventListener("click", (e) => {
@@ -966,29 +976,28 @@ async function loadMemorial(){
     }
   }
 
-if (d.audio?.src){
-  const as = document.getElementById("audioSection");
-  const ap = document.getElementById("audioPlayer");
-  if (as) as.hidden = false;
-  if (ap) ap.src = d.audio.src;
+  if (d.audio?.src){
+    const as = document.getElementById("audioSection");
+    const ap = document.getElementById("audioPlayer");
+    if (as) as.hidden = false;
+    if (ap) ap.src = d.audio.src;
 
-  setupAudioUX();
-}
+    setupAudioUX();
+  }
+
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
 
   renderStats();
   hideLoader();
 }
+
 function setupAudioUX(){
   const ap = document.getElementById("audioPlayer");
   const btn = document.getElementById("audioToggle");
   if (!ap || !btn) return;
 
-  // Volumen inicial suave (25%)
-  try{
-    ap.volume = 0.25;
-  }catch(e){}
+  try{ ap.volume = 0.25; }catch(e){}
 
   const setLabel = () => {
     btn.textContent = ap.paused ? "▶ Reproducir" : "⏸ Pausar";
@@ -1000,7 +1009,6 @@ function setupAudioUX(){
       else ap.pause();
       setLabel();
     }catch(e){
-      // si el navegador bloquea play por interacción, el click ya cuenta como interacción
       setLabel();
     }
   });
