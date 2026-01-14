@@ -57,7 +57,22 @@
     </div>
   </header>
 
+  <!-- ✅ MENU ANCLAS (nuevo) -->
+  <nav class="mMenu" aria-label="Navegación del memorial">
+    <div class="mWrap mMenu__row">
+      <a class="mMenu__btn" href="#inicio">Inicio</a>
+      <a class="mMenu__btn" href="#frases">Frases</a>
+      <a class="mMenu__btn" href="#huella">Huella</a>
+      <a class="mMenu__btn" href="#fotos">Fotos</a>
+      <a class="mMenu__btn" href="#video">Video</a>
+      <a class="mMenu__btn" href="#audio">Audio</a>
+    </div>
+  </nav>
+
   <main class="mWrap">
+
+    <!-- ✅ ANCLA INICIO -->
+    <div id="inicio" class="mAnchor"></div>
 
     <!-- Portada -->
     <div class="mCoverWrap" id="coverWrap">
@@ -113,8 +128,14 @@
       <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
     </section>
 
+    <!-- ✅ ANCLA FRASES -->
+    <div id="frases" class="mAnchor"></div>
+
     <!-- Contenido emocional dinámico -->
     <div id="extraBlocks"></div>
+
+    <!-- ✅ ANCLA HUELLA -->
+    <div id="huella" class="mAnchor"></div>
 
     <section class="mSection" id="statsSection" hidden>
       <h2>Huella de cariño</h2>
@@ -122,11 +143,17 @@
       <div class="mStats" id="statsGrid"></div>
     </section>
 
+    <!-- ✅ ANCLA FOTOS -->
+    <div id="fotos" class="mAnchor"></div>
+
     <!-- Galería -->
     <section class="mSection">
       <h2>Galería</h2>
       <div id="gallery" class="mGallery"></div>
     </section>
+
+    <!-- ✅ ANCLA VIDEO -->
+    <div id="video" class="mAnchor"></div>
 
     <!-- Video -->
     <section class="mSection" id="videoSection" hidden>
@@ -136,20 +163,22 @@
       </div>
     </section>
 
+    <!-- ✅ ANCLA AUDIO -->
+    <div id="audio" class="mAnchor"></div>
+
     <!-- Audio -->
-<section class="mSection" id="audioSection" hidden>
-  <h2>Audio</h2>
+    <section class="mSection" id="audioSection" hidden>
+      <h2>Audio</h2>
 
-  <div class="mAudio">
-    <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
-    <p id="audioHint" class="meta" style="margin:8px 0 0">
-      Volumen inicial suave. Puedes ajustar desde los controles.
-    </p>
+      <div class="mAudio">
+        <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
+        <p id="audioHint" class="meta" style="margin:8px 0 0">
+          Volumen inicial suave. Puedes ajustar desde los controles.
+        </p>
 
-    <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
-  </div>
-</section>
-
+        <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
+      </div>
+    </section>
 
   </main>
 
@@ -157,13 +186,14 @@
   <div id="lightbox" class="lb" hidden>
     <button id="lbClose" class="lb__close" type="button" aria-label="Cerrar">×</button>
 
-   <div class="lb__wrap">
-  <div class="lb__media">
-    <button id="lbPrev" class="lbNav lbNav--prev" type="button" aria-label="Foto anterior">‹</button>
-    <img id="lbImg" class="lb__img" alt="">
-    <button id="lbNext" class="lbNav lbNav--next" type="button" aria-label="Foto siguiente">›</button>
-  </div>
-  <aside class="lb__panel">
+    <div class="lb__wrap">
+      <div class="lb__media">
+        <button id="lbPrev" class="lbNav lbNav--prev" type="button" aria-label="Foto anterior">‹</button>
+        <img id="lbImg" class="lb__img" alt="">
+        <button id="lbNext" class="lbNav lbNav--next" type="button" aria-label="Foto siguiente">›</button>
+      </div>
+
+      <aside class="lb__panel">
         <div class="lb__auth">
           <div id="userInfo" class="lb__user">Invitado</div>
 
