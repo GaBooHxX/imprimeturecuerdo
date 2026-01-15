@@ -163,7 +163,7 @@ function showAuthError(msg){
   box.textContent = msg;
 }
 
-/* ---------------- Loader ---------------- */
+/* ---------------- Loader (2) ---------------- */
 function showLoader(){
   const l = document.getElementById("pageLoader");
   if (!l) return;
@@ -175,7 +175,7 @@ function hideLoader(){
   l.hidden = true;
 }
 
-/* ---------------- Welcome gate ---------------- */
+/* ---------------- Welcome gate (1) ---------------- */
 function setupWelcomeGate(memorialId){
   const gate = document.getElementById("welcomeGate");
   const enter = document.getElementById("welcomeEnter");
@@ -202,7 +202,7 @@ function setupWelcomeGate(memorialId){
   });
 }
 
-/* ---------------- Share ---------------- */
+/* ---------------- Share (3) ---------------- */
 function setupShare(){
   const btn = document.getElementById("btnShare");
   if (!btn) return;
@@ -230,38 +230,6 @@ function setupShare(){
     }catch(e){
       window.prompt("Copia este enlace:", shareUrl);
     }
-  });
-}
-
-/* ---------------- Navegación interna (menú chips) ---------------- */
-function setupInPageNav(){
-  document.querySelectorAll("[data-go]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const target = btn.getAttribute("data-go");
-      if (!target) return;
-      const el = document.querySelector(target);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  });
-}
-
-/* ---------------- Botón subir ---------------- */
-function setupToTop(){
-  const btn = document.getElementById("toTop");
-  if (!btn) return;
-
-  const showAt = 650;
-  const onScroll = () => {
-    const y = window.scrollY || document.documentElement.scrollTop || 0;
-    btn.classList.toggle("show", y > showAt);
-  };
-
-  window.addEventListener("scroll", onScroll, { passive: true });
-  onScroll();
-
-  btn.addEventListener("click", () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 }
 
@@ -399,14 +367,15 @@ function injectEmotionalBlocks(d){
     </section>
   ` : "";
 
+  // ✅ ahora esta sección tiene id="frases" para que el menú funcione siempre
   const quotesHtml = quotes.length ? `
-    <section class="mSection" id="quotes">
+    <section class="mSection" id="frases">
       <h2>Frases</h2>
       <div class="mQuotes">
         ${quotes.map(q => `<div class="mQuote">“${escapeHtml(q)}”</div>`).join("")}
       </div>
     </section>
-  ` : "";
+  ` : `<div id="frases"></div>`;
 
   const sectionsHtml = sections.map(sec => {
     const title = escapeHtml(sec.title || "Sección");
@@ -434,7 +403,7 @@ function injectEmotionalBlocks(d){
     return `
       <section class="mSection">
         <h2>${title}</h2>
-        <p class="meta mText">${escapeHtml(sec.content || "")}</p>
+        <p class="mProse">${escapeHtml(sec.content || "")}</p>
       </section>
     `;
   }).join("");
@@ -554,7 +523,9 @@ function setupGlobalCandles(memorialId){
 /* ---------------- Lightbox + comentarios + reacciones ---------------- */
 function setupLightboxFirebase(gallery){
   const memorialId = getMemorialId();
-  const STEP = 1; // ✅ flechas avanzan/retroceden 2 fotos por click
+
+  // ✅ 1 foto por click
+  const NAV_STEP = 1;
 
   let canSeeHidden = false;
 
@@ -643,9 +614,8 @@ function setupLightboxFirebase(gallery){
 
     lbImg.src = gallery[current].src;
 
-    // precarga next/prev
-    const next = gallery[normalizeIndex(current + STEP)]?.src;
-    const prev = gallery[normalizeIndex(current - STEP)]?.src;
+    const next = gallery[normalizeIndex(current + NAV_STEP)]?.src;
+    const prev = gallery[normalizeIndex(current - NAV_STEP)]?.src;
     [next, prev].forEach((src) => {
       if (!src) return;
       const im = new Image();
@@ -653,7 +623,15 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  function subscribeForIndex(){
+  async function openLb(i){
+    if (!gallery[i]?.src) return;
+
+    updateNavVisibility();
+    setImage(i);
+
+    lb.hidden = false;
+    document.body.style.overflow = "hidden";
+
     if (unsubComments) unsubComments();
     if (unsubReactions) unsubReactions();
 
@@ -691,12 +669,6 @@ function setupLightboxFirebase(gallery){
           .join("");
 
         commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
-      },
-      (err) => {
-        console.warn("comments snapshot error:", err?.code || err);
-        if (commentsList){
-          commentsList.innerHTML = `<div class="lb__hint">No se pudieron cargar comentarios (${escapeHtml(err?.code || "error")}).</div>`;
-        }
       }
     );
 
@@ -713,21 +685,8 @@ function setupLightboxFirebase(gallery){
         if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
         if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
         if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
-      },
-      (err) => console.warn("reactions snapshot error:", err?.code || err)
+      }
     );
-  }
-
-  async function openLb(i){
-    if (!gallery[i]?.src) return;
-
-    updateNavVisibility();
-    setImage(i);
-
-    lb.hidden = false;
-    document.body.style.overflow = "hidden";
-
-    subscribeForIndex();
   }
 
   function closeLb(){
@@ -741,13 +700,66 @@ function setupLightboxFirebase(gallery){
     unsubReactions = null;
   }
 
-  function goTo(i){
+  async function goTo(i){
     if (!gallery.length) return;
     setImage(i);
-    subscribeForIndex();
+
+    if (unsubComments) unsubComments();
+    if (unsubReactions) unsubReactions();
+
+    unsubComments = onSnapshot(
+      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
+      (snap) => {
+        if (!commentsList) return;
+        if (snap.empty){
+          commentsList.innerHTML = `<div class="lb__hint">Aún no hay comentarios en esta foto.</div>`;
+          return;
+        }
+
+        const rendered = snap.docs
+          .map(x => {
+            const c = x.data() || {};
+            const hidden = !!c.hidden;
+            if (hidden && !canSeeHidden) return "";
+
+            const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : "";
+            const badge = hidden ? `<div class="lb__hint">🛡️ Oculto</div>` : "";
+
+            return `
+              <div class="cItem">
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+                  <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
+                  ${badge}
+                </div>
+                <div>${escapeHtml(c.text || "")}</div>
+                <div class="cMeta">${escapeHtml(ts)}</div>
+              </div>
+            `;
+          })
+          .filter(Boolean)
+          .join("");
+
+        commentsList.innerHTML = rendered || `<div class="lb__hint">No hay comentarios para mostrar.</div>`;
+      }
+    );
+
+    unsubReactions = onSnapshot(
+      reactionsCol(memorialId, current),
+      (snap) => {
+        const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
+        snap.forEach(docu => {
+          const r = docu.data() || {};
+          for (const k of Object.keys(sum)) sum[k] += Number(r[k] || 0);
+        });
+        if (totals["❤️"]) totals["❤️"].textContent = String(sum["❤️"]);
+        if (totals["🙏"]) totals["🙏"].textContent = String(sum["🙏"]);
+        if (totals["🕯️"]) totals["🕯️"].textContent = String(sum["🕯️"]);
+        if (totals["🌟"]) totals["🌟"].textContent = String(sum["🌟"]);
+        if (totals["😢"]) totals["😢"].textContent = String(sum["😢"]);
+      }
+    );
   }
 
-  // Abrir desde galería
   const galleryEl = document.getElementById("gallery");
   if (galleryEl){
     galleryEl.addEventListener("click", (e) => {
@@ -757,19 +769,9 @@ function setupLightboxFirebase(gallery){
     });
   }
 
-  // ✅ Flechas: saltan de 2 en 2
-  lbPrev?.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!lb.hidden) goTo(current - STEP);
-  });
-  lbNext?.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!lb.hidden) goTo(current + STEP);
-  });
+  lbPrev?.addEventListener("click", () => { if (!lb.hidden) goTo(current - NAV_STEP); });
+  lbNext?.addEventListener("click", () => { if (!lb.hidden) goTo(current + NAV_STEP); });
 
-  // Cerrar
   lbClose.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -780,15 +782,13 @@ function setupLightboxFirebase(gallery){
     if (e.target === lb) closeLb();
   });
 
-  // Teclado: ESC cierra, flechas navegan (también de 2 en 2)
   window.addEventListener("keydown", (e) => {
     if (lb.hidden) return;
     if (e.key === "Escape") closeLb();
-    if (e.key === "ArrowLeft") goTo(current - STEP);
-    if (e.key === "ArrowRight") goTo(current + STEP);
+    if (e.key === "ArrowLeft") goTo(current - NAV_STEP);
+    if (e.key === "ArrowRight") goTo(current + NAV_STEP);
   });
 
-  // Swipe móvil
   let tStartX = 0, tLastX = 0, tActive = false;
   const SWIPE_MIN = 40;
 
@@ -810,11 +810,10 @@ function setupLightboxFirebase(gallery){
     const dx = tLastX - tStartX;
     if (Math.abs(dx) < SWIPE_MIN) return;
 
-    if (dx > 0) goTo(current - STEP);
-    else goTo(current + STEP);
+    if (dx > 0) goTo(current - NAV_STEP);
+    else goTo(current + NAV_STEP);
   }, { passive: true });
 
-  // Auth buttons lightbox
   btnLogin?.addEventListener("click", async () => { try{ await loginGoogle(); }catch(e){} });
   btnLogout?.addEventListener("click", async () => {
     showAuthError("");
@@ -822,7 +821,6 @@ function setupLightboxFirebase(gallery){
     catch(err){ showAuthError(`No se pudo cerrar sesión. Error: ${err?.code || "desconocido"}`); }
   });
 
-  // Comentar
   btnComment?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user){
@@ -850,7 +848,6 @@ function setupLightboxFirebase(gallery){
     }
   });
 
-  // Reacciones
   document.querySelectorAll(".rBtn").forEach(btn => {
     btn.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -909,6 +906,79 @@ function setupAudioUX(){
   setLabel();
 }
 
+/* ---------------- ✅ Menú + Volver arriba ---------------- */
+function getScrollOffset(){
+  const top = document.getElementById("topBar");
+  const nav = document.querySelector(".mNav");
+  const h1 = top ? top.getBoundingClientRect().height : 0;
+  const h2 = nav ? nav.getBoundingClientRect().height : 0;
+  return Math.ceil(h1 + h2 + 12);
+}
+
+function smoothGoTo(hash){
+  const id = (hash || "").replace("#", "");
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  const offset = getScrollOffset();
+  const y = window.scrollY + el.getBoundingClientRect().top - offset;
+
+  window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+}
+
+function setupStickyNavUX(){
+  const nav = document.getElementById("memNav");
+  if (!nav) return;
+
+  nav.addEventListener("click", (e) => {
+    const a = e.target.closest("a[href^='#']");
+    if (!a) return;
+    e.preventDefault();
+    smoothGoTo(a.getAttribute("href"));
+  });
+
+  // Scrollspy elegante (marca el botón activo)
+  const links = Array.from(nav.querySelectorAll("a[href^='#']"));
+  const targets = links
+    .map(a => document.getElementById(a.getAttribute("href").slice(1)))
+    .filter(Boolean);
+
+  const setActive = (id) => {
+    links.forEach(a => a.classList.toggle("is-active", a.getAttribute("href") === `#${id}`));
+  };
+
+  const pickActive = () => {
+    const offset = getScrollOffset() + 8;
+    let best = null;
+
+    for (const t of targets){
+      const top = t.getBoundingClientRect().top - offset;
+      if (top <= 0) best = t;
+    }
+    if (best?.id) setActive(best.id);
+  };
+
+  window.addEventListener("scroll", pickActive, { passive: true });
+  window.addEventListener("resize", pickActive);
+  pickActive();
+}
+
+function setupToTop(){
+  const btn = document.getElementById("btnToTop");
+  if (!btn) return;
+
+  const toggle = () => {
+    btn.hidden = window.scrollY < 700;
+  };
+
+  btn.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  window.addEventListener("scroll", toggle, { passive: true });
+  toggle();
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   showLoader();
@@ -918,12 +988,11 @@ async function loadMemorial(){
   setupUidRow();
   setupModeratorEntry();
   setupShare();
-  setupInPageNav();
-  setupToTop();
 
   try{ await getRedirectResult(auth); }catch(e){}
 
   const memorialId = getMemorialId();
+
   setupWelcomeGate(memorialId);
 
   await ensureStats(memorialId);
@@ -957,7 +1026,6 @@ async function loadMemorial(){
 
   const items = Array.isArray(d.gallery) ? d.gallery : [];
   const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
-
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
@@ -985,11 +1053,16 @@ async function loadMemorial(){
     const ap = document.getElementById("audioPlayer");
     if (as) as.hidden = false;
     if (ap) ap.src = d.audio.src;
+
     setupAudioUX();
   }
 
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
+
+  // ✅ nav y botón arriba
+  setupStickyNavUX();
+  setupToTop();
 
   renderStats();
   hideLoader();
