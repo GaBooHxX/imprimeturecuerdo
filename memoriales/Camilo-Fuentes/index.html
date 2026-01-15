@@ -44,7 +44,7 @@
   </div>
 
   <!-- Barra superior -->
-  <header class="mTop">
+  <header class="mTop" id="topBar">
     <div class="mWrap mTop__row">
       <a href="/" class="mBack">← Inicio</a>
 
@@ -59,23 +59,22 @@
 
   <main class="mWrap">
 
-    <!-- Anchor inicio -->
-    <div id="secInicio" aria-hidden="true"></div>
-
     <!-- Portada -->
-    <div class="mCoverWrap" id="coverWrap">
+    <div class="mCoverWrap" id="inicio">
       <img id="coverBg" class="mCoverBg" alt="">
       <img id="cover" class="mCover" alt="">
     </div>
 
-    <!-- Menú secciones (elegante, sin barra de fondo) -->
-    <nav class="mCat" aria-label="Secciones del memorial">
-      <button class="mCat__btn" type="button" data-target="secInicio">Inicio</button>
-      <button class="mCat__btn" type="button" data-target="secFrases">Frases</button>
-      <button class="mCat__btn" type="button" data-target="statsSection">Huella</button>
-      <button class="mCat__btn" type="button" data-target="secFotos">Fotos</button>
-      <button class="mCat__btn" type="button" data-target="videoSection">Video</button>
-      <button class="mCat__btn" type="button" data-target="audioSection">Audio</button>
+    <!-- ✅ MENÚ ELEGANTE (sin fondo), debajo de la foto y sticky -->
+    <nav class="mNav" aria-label="Secciones del memorial">
+      <div class="mNav__row" id="memNav">
+        <a class="mNav__btn is-active" href="#inicio">Inicio</a>
+        <a class="mNav__btn" href="#frases">Frases</a>
+        <a class="mNav__btn" href="#statsSection">Huella</a>
+        <a class="mNav__btn" href="#fotos">Fotos</a>
+        <a class="mNav__btn" href="#videoSection">Video</a>
+        <a class="mNav__btn" href="#audioSection">Audio</a>
+      </div>
     </nav>
 
     <!-- Datos principales -->
@@ -104,7 +103,7 @@
       <p class="meta" id="modRoleText" style="margin-top:6px"></p>
       <p id="authError" class="authError" hidden></p>
 
-      <!-- UID -->
+      <!-- UID (se muestra solo al iniciar sesión) -->
       <div id="uidRow" class="authRow" style="margin-top:10px" hidden>
         <div class="authStatus" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
           <span>Tu UID:</span>
@@ -136,7 +135,7 @@
     </section>
 
     <!-- Galería -->
-    <section class="mSection" id="secFotos">
+    <section class="mSection" id="fotos">
       <h2>Galería</h2>
       <div id="gallery" class="mGallery"></div>
     </section>
@@ -165,8 +164,10 @@
 
   </main>
 
-  <!-- Botón flotante: subir -->
-  <button id="btnToTop" class="toTop" type="button" aria-label="Volver al inicio" hidden>↑</button>
+  <!-- ✅ Botón volver arriba -->
+  <button id="btnToTop" class="toTop" type="button" aria-label="Volver arriba" hidden>
+    ↑ Volver arriba
+  </button>
 
   <!-- LIGHTBOX PRO -->
   <div id="lightbox" class="lb" hidden>
