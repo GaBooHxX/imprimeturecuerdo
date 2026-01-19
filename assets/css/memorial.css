@@ -708,3 +708,43 @@ a{color:inherit;text-decoration:none}
   }
   .cSpark{ display:none !important; }
 }
+/* ✅ FIX: Menú siempre por encima (clickeable) */
+
+/* Header arriba de todo */
+.mTop{
+  position: sticky;
+  top: 0;
+  z-index: 1000; /* subido */
+}
+
+/* Menú: por encima de secciones */
+.mNav{
+  position: sticky;
+  top: 64px;      /* mismo valor que ya tenías */
+  z-index: 999;   /* subido para que no quede detrás */
+}
+
+/* “Click shield” invisible: mejora el toque y evita que el texto se monte encima */
+.mNav::before{
+  content:"";
+  position:absolute;
+  inset:-8px;           /* un poco más grande que los botones */
+  border-radius: 18px;
+  background: rgba(0,0,0,0.001); /* transparente (pero existe para el stacking/click) */
+  backdrop-filter: blur(6px);    /* opcional: ayuda a la legibilidad */
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: none;          /* NO bloquea clics a los botones */
+}
+
+/* Asegura que los botones estén por encima del pseudo-elemento */
+.mNav__row{
+  position: relative;
+  z-index: 1;
+}
+
+/* Si alguna sección se “sube” por transform/animación, la bajamos un poco en stacking */
+.mSection, .mCoverWrap, .mGallery{
+  position: relative;
+  z-index: 1;
+}
+
