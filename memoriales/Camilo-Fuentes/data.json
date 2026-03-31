@@ -85,8 +85,5 @@
     "src": "../../assets/aud/Camilo-Fuentes/voz1.mp3",
     "caption": "Tu voz siempre será recordada"
   }
-   "audio1": {
-    "src": "../../assets/aud/Camilo-Fuentes/voz2.mp3",
-    "caption": "Audio de Voz"
-  }
+
 }
