@@ -82,7 +82,11 @@
   },
 
   "audio": {
-    "src": "../../assets/audio/Camilo-Fuentes/mensaje.mp3",
-    "caption": "Mensaje de la familia"
+    "src": "../../assets/aud/Camilo-Fuentes/voz1.mp3",
+    "caption": "Tu voz siempre será recordada"
+  }
+   "audio": {
+    "src": "../../assets/aud/Camilo-Fuentes/voz2.mp3",
+    "caption": "Audio de Voz"
   }
 }
