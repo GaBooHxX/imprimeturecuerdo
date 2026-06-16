@@ -933,3 +933,75 @@ body{
   .mCoverWrap{ height: 58vh; }
 }
 
+/* ---------- Paginación de galería ---------- */
+.mPager{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+.mPagerBtn{
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(216,184,120,.35);
+  background: rgba(216,184,120,.10);
+  color: rgba(238,241,247,.95);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.mPagerBtn:hover:not(:disabled){ background: rgba(216,184,120,.18); transform: translateY(-1px); }
+.mPagerBtn:disabled{ opacity: .4; cursor: not-allowed; }
+.mPagerInfo{
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 16px;
+  color: rgba(238,241,247,.85);
+  min-width: 130px;
+  text-align: center;
+}
+
+/* ---------- Carruseles de video y audio ---------- */
+.mCarNav{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+.mCarBtn{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid rgba(216,184,120,.35);
+  background: rgba(216,184,120,.10);
+  color: rgba(238,241,247,.95);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background .15s ease, transform .15s ease;
+}
+.mCarBtn:hover{ background: rgba(216,184,120,.18); transform: translateY(-1px); }
+.mDots{ display: flex; gap: 8px; align-items: center; }
+.mDot{
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(216,184,120,.5);
+  background: transparent;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.mDot:hover{ background: rgba(216,184,120,.4); }
+.mDot.is-active{ background: var(--gold); transform: scale(1.15); }
+.mCarInfo{
+  font-size: 13px;
+  color: rgba(238,241,247,.7);
+  min-width: 42px;
+  text-align: center;
+}
+

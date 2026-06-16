@@ -1031,6 +1031,149 @@ function setupToTop(){
   toggle();
 }
 
+/* ---------------- Galería paginada (6 por página) ---------------- */
+const GALLERY_PER_PAGE = 6;
+function setupGalleryPaged(gallery){
+  const g = document.getElementById("gallery");
+  if (!g) return;
+
+  if (!gallery.length){
+    g.innerHTML = `<p class="meta">Aún no hay fotos en esta galería.</p>`;
+    return;
+  }
+
+  let pager = document.getElementById("galleryPager");
+  if (!pager){
+    pager = document.createElement("div");
+    pager.id = "galleryPager";
+    pager.className = "mPager";
+    g.insertAdjacentElement("afterend", pager);
+  }
+
+  const pages = Math.ceil(gallery.length / GALLERY_PER_PAGE);
+  let page = 0;
+
+  function render(){
+    const start = page * GALLERY_PER_PAGE;
+    const slice = gallery.slice(start, start + GALLERY_PER_PAGE);
+
+    g.innerHTML = slice.map((it, j) => {
+      const gi = start + j; // índice global (para abrir la foto correcta en el visor)
+      return `
+        <button class="mThumbBtn" type="button" data-i="${gi}" aria-label="Abrir imagen">
+          <div class="mThumbWrap">
+            <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
+            ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
+          </div>
+        </button>`;
+    }).join("");
+
+    if (pages <= 1){ pager.innerHTML = ""; return; }
+    pager.innerHTML = `
+      <button class="mPagerBtn" type="button" data-act="prev" ${page === 0 ? "disabled" : ""}>‹ Anterior</button>
+      <span class="mPagerInfo">Página ${page + 1} de ${pages}</span>
+      <button class="mPagerBtn" type="button" data-act="next" ${page === pages - 1 ? "disabled" : ""}>Siguiente ›</button>
+    `;
+  }
+
+  pager.onclick = (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "prev" && page > 0) page--;
+    else if (b.dataset.act === "next" && page < pages - 1) page++;
+    else return;
+    render();
+  };
+
+  render();
+}
+
+/* ---------------- Carrusel genérico (puntos + flechas) ---------------- */
+function buildCarNav(count){
+  const nav = document.createElement("div");
+  nav.className = "mCarNav";
+  nav.innerHTML = `
+    <button class="mCarBtn" type="button" data-d="-1" aria-label="Anterior">‹</button>
+    <div class="mDots">
+      ${Array.from({length: count}, (_, k) => `<button class="mDot" type="button" data-k="${k}" aria-label="Ir al ${k + 1}"></button>`).join("")}
+    </div>
+    <span class="mCarInfo"></span>
+    <button class="mCarBtn" type="button" data-d="1" aria-label="Siguiente">›</button>
+  `;
+  return nav;
+}
+
+/* ---------------- Carrusel de videos ---------------- */
+function setupVideoCarousel(videos){
+  const sec = document.getElementById("videoSection");
+  const frame = document.getElementById("videoFrame");
+  if (!sec || !frame) return;
+  if (!videos.length){ sec.hidden = true; return; }
+
+  sec.hidden = false;
+  frame.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+
+  let idx = 0, dots = null, info = null;
+  const setV = (i) => {
+    idx = (i % videos.length + videos.length) % videos.length;
+    frame.src = toYouTubeEmbed(videos[idx]);
+    if (dots) [...dots.children].forEach((d, k) => d.classList.toggle("is-active", k === idx));
+    if (info) info.textContent = `${idx + 1} / ${videos.length}`;
+  };
+
+  if (videos.length > 1){
+    const nav = buildCarNav(videos.length);
+    sec.querySelector(".mVideo").insertAdjacentElement("afterend", nav);
+    dots = nav.querySelector(".mDots");
+    info = nav.querySelector(".mCarInfo");
+    nav.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.d) setV(idx + Number(b.dataset.d));
+      else if (b.dataset.k != null) setV(Number(b.dataset.k));
+    });
+  }
+  setV(0);
+}
+
+/* ---------------- Carrusel de audios ---------------- */
+function setupAudioCarousel(audios){
+  const sec = document.getElementById("audioSection");
+  const player = document.getElementById("audioPlayer");
+  if (!sec || !player) return;
+  if (!audios.length){ sec.hidden = true; return; }
+
+  sec.hidden = false;
+  const hint = document.getElementById("audioHint");
+
+  let idx = 0, dots = null, info = null;
+  const setA = (i) => {
+    idx = (i % audios.length + audios.length) % audios.length;
+    const a = audios[idx];
+    const wasPlaying = !player.paused;
+    player.src = a.url;
+    if (hint) hint.textContent = a.caption || "Volumen inicial suave. Puedes ajustar desde los controles.";
+    if (dots) [...dots.children].forEach((d, k) => d.classList.toggle("is-active", k === idx));
+    if (info) info.textContent = `${idx + 1} / ${audios.length}`;
+    if (wasPlaying) player.play().catch(() => {});
+  };
+
+  if (audios.length > 1){
+    const nav = buildCarNav(audios.length);
+    sec.querySelector(".mAudio").insertAdjacentElement("afterend", nav);
+    dots = nav.querySelector(".mDots");
+    info = nav.querySelector(".mCarInfo");
+    nav.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.d) setA(idx + Number(b.dataset.d));
+      else if (b.dataset.k != null) setA(Number(b.dataset.k));
+    });
+  }
+  setA(0);
+  setupAudioUX();
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   showLoader();
@@ -1105,38 +1248,24 @@ async function loadMemorial(){
     });
   }
 
-  const g = document.getElementById("gallery");
-  if (g){
-    g.innerHTML = gallery.map((it, i) => `
-      <button class="mThumbBtn" type="button" data-i="${i}" aria-label="Abrir imagen">
-        <div class="mThumbWrap">
-          <img class="mThumb" src="${it.src}" alt="" loading="lazy" draggable="false">
-          ${it.caption ? `<div class="mCap">${escapeHtml(it.caption)}</div>` : ``}
-        </div>
-      </button>
-    `).join("");
-  }
+  // Galería paginada (6 por página). El lightbox sigue recorriendo TODAS las fotos.
+  setupGalleryPaged(gallery);
 
-  const videoUrl = dyn.videoUrl || d.video?.youtubeEmbedUrl;
-  if (videoUrl){
-    const vs = document.getElementById("videoSection");
-    const vf = document.getElementById("videoFrame");
-    if (vs) vs.hidden = false;
-    if (vf){
-      vf.src = toYouTubeEmbed(videoUrl);
-      vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
-    }
+  // Videos: uno o varios, en carrusel
+  let videos = Array.isArray(dyn.videos) ? dyn.videos.filter(Boolean) : [];
+  if (!videos.length){
+    const single = dyn.videoUrl || d.video?.youtubeEmbedUrl;
+    if (single) videos = [single];
   }
+  setupVideoCarousel(videos);
 
-  const audioSrc = dyn.audioUrl || d.audio?.src;
-  if (audioSrc){
-    const as = document.getElementById("audioSection");
-    const ap = document.getElementById("audioPlayer");
-    if (as) as.hidden = false;
-    if (ap) ap.src = audioSrc;
-
-    setupAudioUX();
+  // Audios: uno o varios, en carrusel
+  let audios = Array.isArray(dyn.audios) ? dyn.audios.filter(a => a && a.url) : [];
+  if (!audios.length){
+    const single = dyn.audioUrl || d.audio?.src;
+    if (single) audios = [{ url: single, caption: d.audio?.caption || "" }];
   }
+  setupAudioCarousel(audios);
 
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);

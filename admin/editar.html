@@ -94,28 +94,25 @@
       <div id="galleryGrid" class="galleryGrid"></div>
     </section>
 
-    <!-- Video -->
+    <!-- Videos -->
     <section class="card">
-      <h2>🎬 Video (YouTube)</h2>
-      <p class="muted">Pega el enlace del video de YouTube (cualquier formato).</p>
-      <div class="row">
-        <input id="fVideo" class="input wide" placeholder="https://www.youtube.com/watch?v=..." />
-      </div>
+      <h2>🎬 Videos (YouTube)</h2>
+      <p class="muted">Pega los enlaces de YouTube, <strong>uno por línea</strong>. Puedes poner varios: en el memorial se verán en un carrusel deslizable.</p>
+      <textarea id="fVideo" class="input wide" rows="4" placeholder="https://www.youtube.com/watch?v=...&#10;https://youtu.be/..."></textarea>
       <div class="row" style="margin-top:10px">
-        <button id="btnSaveVideo" class="btn primary" type="button">Guardar video</button>
-        <button id="btnClearVideo" class="btn ghost" type="button">Quitar video</button>
+        <button id="btnSaveVideo" class="btn primary" type="button">Guardar videos</button>
+        <button id="btnClearVideo" class="btn ghost" type="button">Quitar todos</button>
       </div>
     </section>
 
-    <!-- Audio -->
+    <!-- Audios -->
     <section class="card">
-      <h2>🎵 Audio (voz, canción)</h2>
-      <p class="muted">Un audio especial: su voz, una canción que le gustaba…</p>
+      <h2>🎵 Audios (voz, canciones)</h2>
+      <p class="muted">Sube uno o varios audios: su voz, una canción… En el memorial se verán en un carrusel.</p>
       <div class="row">
-        <button id="btnUploadAudio" class="btn" type="button">Subir audio</button>
-        <button id="btnClearAudio" class="btn ghost" type="button">Quitar audio</button>
+        <button id="btnUploadAudio" class="btn primary" type="button">Subir audio</button>
       </div>
-      <audio id="audioPreview" controls style="width:100%; margin-top:12px" hidden></audio>
+      <div id="audioList" class="audioList"></div>
     </section>
 
   </div>

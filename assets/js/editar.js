@@ -41,6 +41,7 @@ await getRedirectResult(auth).catch(() => {});
 let memorialId = null;
 let isAdmin = false;
 let galleryCache = []; // [{key, url, caption, order, ...}]
+let audiosCache = []; // [{url, caption}]
 
 /* ---------- refs ---------- */
 const $ = (id) => document.getElementById(id);
@@ -80,8 +81,7 @@ const btnSaveVideo = $("btnSaveVideo");
 const btnClearVideo = $("btnClearVideo");
 
 const btnUploadAudio = $("btnUploadAudio");
-const btnClearAudio = $("btnClearAudio");
-const audioPreview = $("audioPreview");
+const audioList = $("audioList");
 
 /* ---------- helpers UI ---------- */
 function showError(msg){
@@ -232,14 +232,51 @@ async function loadTextsAndMeta(){
   if (coverUrl){ coverPreview.src = previewSrc(coverUrl); coverPreview.hidden = false; }
   else { coverPreview.hidden = true; }
 
-  // Video
-  fVideo.value = c.videoUrl || base.video?.youtubeEmbedUrl || "";
+  // Videos (uno por línea)
+  let videos = Array.isArray(c.videos) ? c.videos.filter(Boolean) : [];
+  if (!videos.length){
+    const single = c.videoUrl || base.video?.youtubeEmbedUrl;
+    if (single) videos = [single];
+  }
+  fVideo.value = videos.join("\n");
 
-  // Audio
-  const audioUrl = c.audioUrl || base.audio?.src || "";
-  if (audioUrl){ audioPreview.src = previewSrc(audioUrl); audioPreview.hidden = false; }
-  else { audioPreview.hidden = true; }
+  // Audios
+  let audios = Array.isArray(c.audios) ? c.audios.filter(a => a && a.url) : [];
+  if (!audios.length){
+    const single = c.audioUrl || base.audio?.src;
+    if (single) audios = [{ url: single, caption: base.audio?.caption || "" }];
+  }
+  audiosCache = audios;
+  renderAudios();
 }
+
+function renderAudios(){
+  if (!audioList) return;
+  if (!audiosCache.length){
+    audioList.innerHTML = `<div class="muted" style="margin-top:10px">Aún no hay audios.</div>`;
+    return;
+  }
+  audioList.innerHTML = audiosCache.map((a, i) => `
+    <div class="audioItem">
+      <audio controls preload="metadata" src="${previewSrc(a.url)}"></audio>
+      <button class="mini danger" type="button" data-act="delAudio" data-i="${i}">Eliminar</button>
+    </div>
+  `).join("");
+}
+
+async function saveAudios(){
+  await setDoc(contentDoc(), { audios: audiosCache, audioUrl: "", updatedAt: serverTimestamp() }, { merge: true });
+}
+
+audioList?.addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-act='delAudio']");
+  if (!b) return;
+  if (!ensureAdmin()) return;
+  const i = Number(b.dataset.i);
+  audiosCache = audiosCache.filter((_, k) => k !== i);
+  try{ await saveAudios(); renderAudios(); showOk("Audio eliminado"); }
+  catch(err){ showError("No se pudo eliminar el audio: " + (err?.code || err)); }
+});
 
 btnSaveText?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
@@ -465,22 +502,23 @@ galleryGrid?.addEventListener("click", async (e) => {
   }
 });
 
-/* ---------- Video ---------- */
+/* ---------- Videos (varios) ---------- */
 btnSaveVideo?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
+  const videos = fVideo.value.split("\n").map(s => s.trim()).filter(Boolean);
   try{
-    await setDoc(contentDoc(), { videoUrl: fVideo.value.trim(), updatedAt: serverTimestamp() }, { merge: true });
-    showOk("Video guardado ✅");
-  }catch(e){ showError("No se pudo guardar el video: " + (e?.code || e)); }
+    await setDoc(contentDoc(), { videos, videoUrl: "", updatedAt: serverTimestamp() }, { merge: true });
+    showOk(videos.length > 1 ? "Videos guardados ✅" : "Video guardado ✅");
+  }catch(e){ showError("No se pudieron guardar los videos: " + (e?.code || e)); }
 });
 btnClearVideo?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
   fVideo.value = "";
-  await setDoc(contentDoc(), { videoUrl: "", updatedAt: serverTimestamp() }, { merge: true });
-  showOk("Video quitado");
+  await setDoc(contentDoc(), { videos: [], videoUrl: "", updatedAt: serverTimestamp() }, { merge: true });
+  showOk("Videos quitados");
 });
 
-/* ---------- Audio ---------- */
+/* ---------- Audios (varios) ---------- */
 btnUploadAudio?.addEventListener("click", () => {
   if (!ensureAdmin()) return;
   openWidget({
@@ -488,17 +526,11 @@ btnUploadAudio?.addEventListener("click", () => {
     resourceType: "auto",
     clientAllowedFormats: ["mp3", "m4a", "wav", "ogg", "aac", "mpeg"]
   }, async (info) => {
-    await setDoc(contentDoc(), { audioUrl: info.secure_url, updatedAt: serverTimestamp() }, { merge: true });
-    audioPreview.src = info.secure_url; audioPreview.hidden = false;
-    showOk("Audio actualizado ✅");
+    audiosCache = [...audiosCache, { url: info.secure_url, caption: "" }];
+    await saveAudios();
+    renderAudios();
+    showOk("Audio agregado ✅");
   });
-});
-btnClearAudio?.addEventListener("click", async () => {
-  if (!ensureAdmin()) return;
-  await setDoc(contentDoc(), { audioUrl: "", updatedAt: serverTimestamp() }, { merge: true });
-  audioPreview.hidden = true;
-  showOk("Audio quitado");
-  loadTextsAndMeta();
 });
 
 /* ---------- util ---------- */
