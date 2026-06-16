@@ -17,6 +17,6 @@ export const firebaseConfig = {
    (Está todo explicado paso a paso en LEEME-CONFIGURACION.md)
    ============================================================ */
 export const cloudinaryConfig = {
-  cloudName: "TU_CLOUD_NAME",
-  uploadPreset: "TU_UPLOAD_PRESET"
+  cloudName: "dlt6g7azz",
+  uploadPreset: "ml_default"
 };
