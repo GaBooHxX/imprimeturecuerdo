@@ -11,6 +11,14 @@ service cloud.firestore {
     function signedIn() {
       return request.auth != null;
     }
+    // Dueños por correo de Google. Para sumar a otro administrador,
+    // agrega su correo a esta lista (debe coincidir con assets/js/firebase-config.js).
+    function isOwner() {
+      return signedIn() &&
+        request.auth.token.email in [
+          'gabriel.amadorf@gmail.com'
+        ];
+    }
     function isGlobalAdmin() {
       return signedIn() &&
         exists(/databases/$(database)/documents/admins/$(request.auth.uid));
@@ -23,7 +31,7 @@ service cloud.firestore {
       return signedIn() &&
         exists(/databases/$(database)/documents/memorials/$(mid)/mods/$(request.auth.uid));
     }
-    function canManage(mid) { return isGlobalAdmin() || isMemorialAdmin(mid); }
+    function canManage(mid) { return isOwner() || isGlobalAdmin() || isMemorialAdmin(mid); }
     function canModerate(mid) { return canManage(mid) || isMod(mid); }
 
     // Administradores globales (se asignan a mano desde la consola)
@@ -35,10 +43,10 @@ service cloud.firestore {
     match /memorials/{mid} {
       allow read: if true;
 
-      // Admin del memorial (se asigna a mano desde la consola)
+      // Admin del memorial (el dueño puede agregarlos/quitarlos desde el panel)
       match /admin/{uid} {
         allow read: if signedIn() && (request.auth.uid == uid || canManage(mid));
-        allow write: if false;
+        allow write: if isOwner() || isGlobalAdmin();
       }
 
       // Moderadores (los asigna un admin desde el panel)

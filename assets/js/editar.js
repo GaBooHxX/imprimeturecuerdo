@@ -1,4 +1,4 @@
-import { firebaseConfig, cloudinaryConfig } from "./firebase-config.js";
+import { firebaseConfig, cloudinaryConfig, ownerEmails } from "./firebase-config.js";
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
@@ -123,8 +123,16 @@ btnLogin?.addEventListener("click", async () => {
 });
 btnLogout?.addEventListener("click", () => signOut(auth));
 
+function isOwnerEmail(email){
+  const list = Array.isArray(ownerEmails) ? ownerEmails : [];
+  return !!email && list.map(e => String(e).toLowerCase()).includes(String(email).toLowerCase());
+}
+
 async function checkAdmin(uid){
-  // Admin global O admin de este memorial
+  // Dueño por correo (lo más simple: ni UID ni documentos)
+  if (isOwnerEmail(auth.currentUser?.email)) return true;
+
+  // O admin global / admin de este memorial (por si agregas a alguien sin tocar la lista)
   try{
     const g = await getDoc(doc(db, "admins", uid));
     if (g.exists()) return true;

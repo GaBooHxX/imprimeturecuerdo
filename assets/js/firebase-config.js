@@ -20,3 +20,15 @@ export const cloudinaryConfig = {
   cloudName: "dlt6g7azz",
   uploadPreset: "ml_default"
 };
+
+/* ============================================================
+   Dueños / administradores principales (por correo de Google).
+   Quien inicie sesión con uno de estos correos es ADMINISTRADOR
+   automáticamente: puede subir fotos y editar TODOS los memoriales,
+   sin tocar la base de datos ni buscar "UID".
+   Para sumar otro familiar como administrador, agrega su correo
+   de Google a esta lista (y vuelve a publicar las reglas).
+   ============================================================ */
+export const ownerEmails = [
+  "gabriel.amadorf@gmail.com"
+];
