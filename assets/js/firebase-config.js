@@ -30,5 +30,6 @@ export const cloudinaryConfig = {
    de Google a esta lista (y vuelve a publicar las reglas).
    ============================================================ */
 export const ownerEmails = [
+  "gabooh1516@gmail.com",
   "gabriel.amadorf@gmail.com"
 ];

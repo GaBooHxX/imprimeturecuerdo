@@ -16,6 +16,7 @@ service cloud.firestore {
     function isOwner() {
       return signedIn() &&
         request.auth.token.email in [
+          'gabooh1516@gmail.com',
           'gabriel.amadorf@gmail.com'
         ];
     }
