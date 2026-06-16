@@ -1055,6 +1055,105 @@ body{
   font-size: 14.5px;
 }
 
+/* ---------- Velas con dedicatoria ---------- */
+.candleMsg{
+  width: 100%;
+  min-height: 56px;
+  resize: vertical;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+  color: rgba(238,241,247,.92);
+  border-radius: 14px;
+  padding: 10px 14px;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+}
+.candleMsg:disabled{ opacity: .55; }
+.candleWall{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.candleItem{
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid rgba(216,184,120,.20);
+  background: rgba(216,184,120,.05);
+  border-radius: 14px;
+  padding: 12px;
+}
+.candleFlame{ font-size: 22px; line-height: 1; filter: drop-shadow(0 0 8px rgba(216,184,120,.55)); }
+.candleBody strong{ font-size: 14px; }
+.candleBody p{
+  margin: 4px 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  color: rgba(238,241,247,.85);
+  line-height: 1.45;
+}
+
+/* ---------- Botón "Modo homenaje" ---------- */
+.mGhostBtn{
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(216,184,120,.35);
+  background: rgba(216,184,120,.10);
+  color: rgba(238,241,247,.95);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.mGhostBtn:hover{ background: rgba(216,184,120,.18); transform: translateY(-1px); }
+
+/* ---------- Modo presentación (slideshow) ---------- */
+.ss{
+  position: fixed;
+  inset: 0;
+  z-index: 10080;
+  background: #050406;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.ss__img{
+  max-width: 96vw;
+  max-height: 86vh;
+  object-fit: contain;
+  border-radius: 12px;
+  transition: opacity .25s ease;
+  opacity: 1;
+}
+.ss__cap{
+  position: fixed;
+  bottom: 26px;
+  left: 0; right: 0;
+  text-align: center;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  color: rgba(245,240,230,.92);
+  text-shadow: 0 2px 12px rgba(0,0,0,.8);
+  padding: 0 20px;
+}
+.ss__close{
+  position: fixed;
+  top: 16px; right: 16px;
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.2);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  z-index: 10081;
+}
+
 /* ---------- Libro de condolencias ---------- */
 .gbForm{ display: grid; gap: 10px; }
 #gbText{

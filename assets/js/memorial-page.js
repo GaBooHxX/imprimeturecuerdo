@@ -460,14 +460,8 @@ function injectEmotionalBlocks(d){
       `;
     }
     if (sec.type === "candle"){
-      return `
-        <section class="mSection">
-          <h2>${title}</h2>
-          <p class="meta">${escapeHtml(sec.content || "")}</p>
-          <button class="mCandleBtn" type="button" id="candleBtn">🕯️ Encender vela</button>
-          <p class="meta" id="candleCount" style="margin-top:10px"></p>
-        </section>
-      `;
+      // Las velas ahora tienen su propia sección fija (con dedicatoria y muro).
+      return "";
     }
     return `
       <section class="mSection">
@@ -536,16 +530,35 @@ function candleBurst(){
 }
 
 function setupGlobalCandles(memorialId){
+  const sec = document.getElementById("candleSection");
   const btn = document.getElementById("candleBtn");
   const out = document.getElementById("candleCount");
+  const wall = document.getElementById("candleWall");
+  const msg = document.getElementById("candleMsg");
   if (!btn || !out) return;
+  if (sec) sec.hidden = false;
 
   onSnapshot(
     candlesCol(memorialId),
     (snap) => {
-      out.textContent = `🕯️ ${snap.size} velas encendidas`;
+      out.textContent = `🕯️ ${snap.size} ${snap.size === 1 ? "vela encendida" : "velas encendidas"}`;
       liveStats.candles = snap.size;
       renderStats();
+
+      if (wall){
+        const items = snap.docs
+          .map(d => d.data() || {})
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        wall.innerHTML = items.map(c => `
+          <div class="candleItem">
+            <div class="candleFlame">🕯️</div>
+            <div class="candleBody">
+              <strong>${escapeHtml(c.name || "Anónimo")}</strong>
+              ${c.message ? `<p>${escapeHtml(c.message)}</p>` : ``}
+            </div>
+          </div>
+        `).join("");
+      }
     },
     (err) => { console.warn("Candles snapshot error:", err?.code || err); }
   );
@@ -554,15 +567,17 @@ function setupGlobalCandles(memorialId){
     if (!user){
       btn.disabled = true;
       btn.textContent = "Inicia sesión para encender una vela";
+      if (msg) msg.disabled = true;
       return;
     }
 
     btn.disabled = false;
+    if (msg) msg.disabled = false;
     const ref = candleDoc(memorialId, user.uid);
 
     try{
       const snap = await getDoc(ref);
-      btn.textContent = snap.exists() ? "🕯️ Apagar vela" : "🕯️ Encender vela";
+      btn.textContent = snap.exists() ? "🕯️ Apagar mi vela" : "🕯️ Encender vela";
     }catch(e){
       btn.textContent = "🕯️ Encender vela";
     }
@@ -577,9 +592,11 @@ function setupGlobalCandles(memorialId){
           await setDoc(ref, {
             uid: user.uid,
             name: user.displayName || "Usuario",
+            message: msg ? (msg.value || "").trim().slice(0, 200) : "",
             createdAt: serverTimestamp()
           });
-          btn.textContent = "🕯️ Apagar vela";
+          if (msg) msg.value = "";
+          btn.textContent = "🕯️ Apagar mi vela";
         }
         candleBurst();
       }catch(err){
@@ -1276,6 +1293,58 @@ function setupGuestbook(memorialId){
   });
 }
 
+/* ---------------- Modo presentación (slideshow) ---------------- */
+function setupSlideshow(gallery, audios){
+  const btn = document.getElementById("btnSlideshow");
+  const overlay = document.getElementById("slideshow");
+  if (!btn || !overlay) return;
+
+  if (!gallery.length){ btn.hidden = true; return; }
+  btn.hidden = false;
+
+  const img = document.getElementById("ssImg");
+  const cap = document.getElementById("ssCap");
+  const closeBtn = document.getElementById("ssClose");
+  const player = document.getElementById("audioPlayer");
+  let i = 0, timer = null;
+
+  function show(n){
+    i = (n % gallery.length + gallery.length) % gallery.length;
+    if (!img) return;
+    img.style.opacity = "0";
+    setTimeout(() => {
+      img.src = gallery[i].src;
+      if (cap) cap.textContent = gallery[i].caption || "";
+      img.style.opacity = "1";
+    }, 250);
+  }
+  function start(){
+    overlay.hidden = false;
+    document.body.style.overflow = "hidden";
+    show(0);
+    timer = setInterval(() => show(i + 1), 4500);
+    if (player && audios.length){
+      try{ player.volume = 0.2; if (player.paused) player.play().catch(() => {}); }catch(e){}
+    }
+  }
+  function stop(){
+    overlay.hidden = true;
+    document.body.style.overflow = "";
+    if (timer) clearInterval(timer);
+    timer = null;
+  }
+
+  btn.addEventListener("click", start);
+  closeBtn?.addEventListener("click", stop);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) stop(); });
+  window.addEventListener("keydown", (e) => {
+    if (overlay.hidden) return;
+    if (e.key === "Escape") stop();
+    if (e.key === "ArrowRight") show(i + 1);
+    if (e.key === "ArrowLeft") show(i - 1);
+  });
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   showLoader();
@@ -1370,6 +1439,7 @@ async function loadMemorial(){
 
   renderTimeline(Array.isArray(dyn.timeline) ? dyn.timeline : d.timeline);
   setupGuestbook(memorialId);
+  setupSlideshow(gallery, audios);
 
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);

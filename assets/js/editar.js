@@ -88,6 +88,17 @@ const tlList = $("tlList");
 const btnAddTL = $("btnAddTL");
 const btnSaveTL = $("btnSaveTL");
 
+const qrBox = $("qrBox");
+const btnDownloadQR = $("btnDownloadQR");
+const qrUrl = $("qrUrl");
+
+const SITE_BASE = "https://gaboohxx.github.io/imprimeturecuerdo";
+function publicMemorialUrl(id){
+  return (id === "Camilo-Fuentes")
+    ? `${SITE_BASE}/memoriales/Camilo-Fuentes/`
+    : `${SITE_BASE}/memorial/?m=${encodeURIComponent(id)}`;
+}
+
 /* ---------- helpers UI ---------- */
 function showError(msg){
   if (!msg){ errorBox.hidden = true; errorBox.textContent = ""; return; }
@@ -166,7 +177,7 @@ onAuthStateChanged(auth, async (user) => {
   if (memorialId){
     isAdmin = await checkAdmin(user.uid);
     applyAdminUI();
-    if (isAdmin) await loadAll();
+    if (isAdmin){ await loadAll(); renderQR(); }
   }
 });
 
@@ -197,7 +208,7 @@ async function loadMemorial(){
 
   isAdmin = await checkAdmin(user.uid);
   applyAdminUI();
-  if (isAdmin) await loadAll();
+  if (isAdmin){ await loadAll(); renderQR(); }
 }
 
 async function loadAll(){
@@ -305,6 +316,33 @@ btnSaveText?.addEventListener("click", async () => {
     }, { merge: true });
     showOk("Textos guardados ✅");
   }catch(e){ showError("No se pudieron guardar los textos: " + (e?.code || e)); }
+});
+
+/* ---------- Código QR ---------- */
+function renderQR(){
+  if (!qrBox || !window.QRCode || !memorialId) return;
+  const url = publicMemorialUrl(memorialId);
+  qrBox.innerHTML = "";
+  new window.QRCode(qrBox, {
+    text: url,
+    width: 240,
+    height: 240,
+    correctLevel: window.QRCode.CorrectLevel.M
+  });
+  if (qrUrl) qrUrl.textContent = url;
+}
+
+btnDownloadQR?.addEventListener("click", () => {
+  const canvas = qrBox?.querySelector("canvas");
+  const img = qrBox?.querySelector("img");
+  const dataUrl = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
+  if (!dataUrl) return;
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = `QR-${memorialId}.png`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 });
 
 /* ---------- Línea de tiempo ---------- */

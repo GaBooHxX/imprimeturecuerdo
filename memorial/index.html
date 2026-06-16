@@ -4,7 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>Memorial</title>
+  <title>En memoria</title>
+
+  <!-- Vista previa al compartir (WhatsApp / Facebook) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="En memoria" />
+  <meta property="og:description" content="Un espacio para recordar con cariño: fotos, recuerdos y un libro de condolencias. 🕯️" />
+  <meta name="twitter:card" content="summary" />
 
   <!-- Tipografía elegante (homenaje) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,6 +85,7 @@
         <a class="mNav__btn" href="#fotos">Fotos</a>
         <a class="mNav__btn" href="#videoSection">Video</a>
         <a class="mNav__btn" href="#audioSection">Audio</a>
+        <a class="mNav__btn" href="#candleSection">Velas</a>
         <a class="mNav__btn" href="#guestbook">Mensajes</a>
       </div>
     </nav>
@@ -137,6 +144,7 @@
     <!-- Galería -->
     <section class="mSection" id="fotos">
       <h2>Galería</h2>
+      <button id="btnSlideshow" class="mGhostBtn" type="button" hidden>▶ Modo homenaje</button>
       <div id="gallery" class="mGallery"></div>
     </section>
 
@@ -162,6 +170,16 @@
       </div>
     </section>
 
+    <!-- Velas -->
+    <section class="mSection" id="candleSection" hidden>
+      <h2>Velas</h2>
+      <p class="meta">Enciende una vela en su memoria y, si quieres, deja unas palabras. (Inicia sesión con Google.)</p>
+      <textarea id="candleMsg" class="candleMsg" maxlength="200" placeholder="Unas palabras (opcional)…"></textarea>
+      <button class="mCandleBtn" type="button" id="candleBtn">🕯️ Encender vela</button>
+      <p class="meta" id="candleCount" style="margin-top:10px"></p>
+      <div class="candleWall" id="candleWall"></div>
+    </section>
+
     <!-- Libro de condolencias -->
     <section class="mSection" id="guestbook">
       <h2>Libro de condolencias</h2>
@@ -182,6 +200,13 @@
   <button id="btnToTop" class="toTop" type="button" aria-label="Volver arriba" hidden>
     ↑ Volver arriba
   </button>
+
+  <!-- MODO PRESENTACIÓN (homenaje) -->
+  <div id="slideshow" class="ss" hidden>
+    <button id="ssClose" class="ss__close" type="button" aria-label="Cerrar">×</button>
+    <img id="ssImg" class="ss__img" alt="">
+    <div id="ssCap" class="ss__cap"></div>
+  </div>
 
   <!-- LIGHTBOX -->
   <div id="lightbox" class="lb" hidden>
