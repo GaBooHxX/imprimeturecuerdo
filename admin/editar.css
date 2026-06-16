@@ -1,0 +1,108 @@
+/* Estilos del panel de edición (complementan admin.css) */
+
+h1{ font-family:"Cormorant Garamond", Georgia, serif; font-weight:600; font-size:26px; }
+h2{ font-family:"Cormorant Garamond", Georgia, serif; font-weight:600; font-size:22px; }
+
+.ok{
+  margin:10px 0 0;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(120,220,150,.35);
+  background:rgba(120,220,150,.12);
+  color:#cdeccf;
+}
+
+.lbl{
+  display:block;
+  margin:14px 0 6px;
+  font-size:13px;
+  color:var(--muted);
+  font-weight:600;
+}
+
+.input.wide{ width:100%; min-width:0; }
+textarea.input{ resize:vertical; line-height:1.5; font-family:inherit; }
+
+.btn.primary{
+  border:1px solid rgba(214,178,107,.45);
+  background:rgba(214,178,107,.16);
+  color:#fff;
+}
+.btn.primary:hover{ background:rgba(214,178,107,.24); }
+.btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* Portada */
+.coverPreview{
+  width:120px; height:80px; object-fit:cover;
+  border-radius:10px; border:1px solid var(--line);
+}
+
+/* Dropzone */
+.dropzone{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; text-align:center;
+  padding:26px 18px;
+  border:2px dashed rgba(214,178,107,.40);
+  border-radius:16px;
+  background:rgba(214,178,107,.05);
+  transition:background .2s ease, border-color .2s ease;
+}
+.dropzone.is-over{
+  background:rgba(214,178,107,.14);
+  border-color:rgba(214,178,107,.75);
+}
+.dropzone strong{ font-size:16px; }
+.dropzone span{ color:var(--muted); font-size:13px; max-width:46ch; }
+.dropzone .btn{ margin-top:6px; }
+
+.importBox{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  margin-top:12px; padding:10px 12px;
+  border:1px solid var(--line); border-radius:12px;
+  background:rgba(255,255,255,.03); color:var(--muted); font-size:13px;
+}
+
+/* Galería editable */
+.galleryGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+  gap:14px;
+  margin-top:16px;
+}
+.gCard{
+  border:1px solid var(--line);
+  border-radius:14px;
+  overflow:hidden;
+  background:rgba(255,255,255,.03);
+  display:flex; flex-direction:column;
+}
+.gCard img{
+  width:100%; height:140px; object-fit:cover; display:block;
+  background:#000;
+}
+.gCard .gBody{ padding:10px; display:flex; flex-direction:column; gap:8px; }
+.gCard .capInput{
+  width:100%; padding:8px 10px; font-size:13px;
+  border-radius:10px; border:1px solid var(--line);
+  background:rgba(255,255,255,.04); color:var(--text);
+}
+.gCard .gActions{ display:flex; gap:6px; flex-wrap:wrap; }
+.gCard .mini{
+  flex:1; padding:7px 8px; font-size:12px; font-weight:600;
+  border-radius:9px; border:1px solid var(--line);
+  background:rgba(255,255,255,.05); color:var(--text); cursor:pointer;
+}
+.gCard .mini:hover{ background:rgba(255,255,255,.10); }
+.gCard .mini.danger{
+  border:1px solid rgba(255,107,107,.35);
+  background:rgba(255,107,107,.10); color:#ffd2d2;
+}
+.gCard .mini.save{
+  border:1px solid rgba(214,178,107,.45);
+  background:rgba(214,178,107,.14);
+}
+.gCard .gIndex{
+  font-size:11px; color:var(--muted); padding:0 2px;
+}
+
+.spin{ opacity:.6; pointer-events:none; }

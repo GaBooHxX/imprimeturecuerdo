@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Editar memorial | Imprime tu Recuerdo</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./admin.css">
+  <link rel="stylesheet" href="./editar.css">
+</head>
+<body>
+
+  <header class="top">
+    <h1>✏️ Editar memorial</h1>
+    <div class="auth">
+      <div id="authStatus" class="pill">Verificando…</div>
+      <button id="btnLogin" class="btn" type="button">Continuar con Google</button>
+      <button id="btnLogout" class="btn ghost" type="button" hidden>Cerrar sesión</button>
+    </div>
+  </header>
+
+  <p id="roleInfo" class="muted">Cargando permisos…</p>
+  <p id="errorBox" class="error" hidden></p>
+  <div id="okBox" class="ok" hidden></div>
+
+  <!-- Selector de memorial -->
+  <section id="memorialPick" class="card" hidden>
+    <h2>Memorial</h2>
+    <div class="row">
+      <input id="memorialIdInput" class="input" placeholder="Camilo-Fuentes" value="Camilo-Fuentes" />
+      <button id="btnLoadMemorial" class="btn" type="button">Cargar</button>
+      <a id="linkView" class="btn ghost" href="#" target="_blank" rel="noopener">Ver memorial ↗</a>
+    </div>
+    <div class="muted" style="margin-top:10px">Editando: <strong id="memorialActive">—</strong></div>
+  </section>
+
+  <!-- ====== Todo lo editable (solo si eres admin) ====== -->
+  <div id="editor" hidden>
+
+    <!-- Textos -->
+    <section class="card">
+      <h2>📝 Textos del memorial</h2>
+      <label class="lbl">Nombre completo</label>
+      <input id="fName" class="input wide" placeholder="Nombre y apellidos" />
+
+      <label class="lbl">Fechas</label>
+      <input id="fDates" class="input wide" placeholder="03 Agosto 1966 • 06 Agosto 2025" />
+
+      <label class="lbl">Frase / dedicatoria breve (bajo la foto)</label>
+      <textarea id="fBio" class="input wide" rows="3" placeholder="Una frase corta y sentida…"></textarea>
+
+      <label class="lbl">Historia / biografía</label>
+      <textarea id="fHistory" class="input wide" rows="7" placeholder="Su historia, con cariño…"></textarea>
+
+      <label class="lbl">Frases (una por línea)</label>
+      <textarea id="fQuotes" class="input wide" rows="4" placeholder="Gracias por tu amor y tus enseñanzas.&#10;Tu luz sigue acompañándonos."></textarea>
+
+      <div class="row" style="margin-top:12px">
+        <button id="btnSaveText" class="btn primary" type="button">Guardar textos</button>
+      </div>
+    </section>
+
+    <!-- Portada -->
+    <section class="card">
+      <h2>🖼️ Foto de portada</h2>
+      <p class="muted">Es la foto grande de arriba del memorial.</p>
+      <div class="row">
+        <img id="coverPreview" class="coverPreview" alt="" hidden>
+        <button id="btnUploadCover" class="btn" type="button">Cambiar portada</button>
+        <button id="btnClearCover" class="btn ghost" type="button">Quitar (usar la original)</button>
+      </div>
+    </section>
+
+    <!-- Galería -->
+    <section class="card">
+      <h2>📷 Fotos de la galería</h2>
+
+      <div id="dropHint" class="dropzone">
+        <strong>Arrastra fotos aquí</strong>
+        <span>o usa el botón. Puedes subir varias a la vez, también desde el celular.</span>
+        <button id="btnUploadPhotos" class="btn primary" type="button">Subir fotos</button>
+      </div>
+
+      <div id="importBox" class="importBox" hidden>
+        <span>Aún no has movido las fotos actuales a tu galería editable.</span>
+        <button id="btnImport" class="btn" type="button">Importar las fotos actuales</button>
+      </div>
+
+      <div id="galleryGrid" class="galleryGrid"></div>
+    </section>
+
+    <!-- Video -->
+    <section class="card">
+      <h2>🎬 Video (YouTube)</h2>
+      <p class="muted">Pega el enlace del video de YouTube (cualquier formato).</p>
+      <div class="row">
+        <input id="fVideo" class="input wide" placeholder="https://www.youtube.com/watch?v=..." />
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnSaveVideo" class="btn primary" type="button">Guardar video</button>
+        <button id="btnClearVideo" class="btn ghost" type="button">Quitar video</button>
+      </div>
+    </section>
+
+    <!-- Audio -->
+    <section class="card">
+      <h2>🎵 Audio (voz, canción)</h2>
+      <p class="muted">Un audio especial: su voz, una canción que le gustaba…</p>
+      <div class="row">
+        <button id="btnUploadAudio" class="btn" type="button">Subir audio</button>
+        <button id="btnClearAudio" class="btn ghost" type="button">Quitar audio</button>
+      </div>
+      <audio id="audioPreview" controls style="width:100%; margin-top:12px" hidden></audio>
+    </section>
+
+  </div>
+
+  <!-- Cloudinary Upload Widget -->
+  <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+  <script type="module" src="../assets/js/editar.js"></script>
+</body>
+</html>

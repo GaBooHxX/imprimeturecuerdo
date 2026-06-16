@@ -99,13 +99,23 @@ function closeModal(){
   document.body.style.overflow = "";
 }
 
-/* photos count desde data.json (gallery length) */
-async function getPhotoCount(){
-  const res = await fetch("data.json", { cache: "no-store" });
-  if (!res.ok) return 0;
-  const d = await res.json();
-  const items = Array.isArray(d.gallery) ? d.gallery : [];
-  return items.length;
+/* Claves de fotos: primero la galería subida (Firestore); si no hay, índices de data.json */
+async function getPhotoKeys(memorialId){
+  try{
+    const snap = await getDocs(query(collection(db, "memorials", memorialId, "gallery"), orderBy("order", "asc")));
+    if (!snap.empty) return snap.docs.map(d => d.id);
+  }catch(_){}
+
+  try{
+    const res = await fetch("data.json", { cache: "no-store" });
+    if (res.ok){
+      const d = await res.json();
+      const items = Array.isArray(d.gallery) ? d.gallery : [];
+      return items.map((_, i) => String(i));
+    }
+  }catch(_){}
+
+  return [];
 }
 
 /* Cargar lista de comentarios (por foto) */
@@ -115,16 +125,16 @@ async function loadModerationList(memorialId){
   const showHidden = !!modShowHidden?.checked;
   modList.innerHTML = `<div class="lb__hint">Cargando…</div>`;
 
-  const photoCount = await getPhotoCount();
-  if (!photoCount){
-    modList.innerHTML = `<div class="lb__hint">No se detectaron fotos en gallery.</div>`;
+  const photoKeys = await getPhotoKeys(memorialId);
+  if (!photoKeys.length){
+    modList.innerHTML = `<div class="lb__hint">No se detectaron fotos en la galería.</div>`;
     return;
   }
 
   const rows = [];
 
-  for (let i = 0; i < photoCount; i++){
-    const colRef = collection(db, "memorials", memorialId, "photos", String(i), "comments");
+  for (const pk of photoKeys){
+    const colRef = collection(db, "memorials", memorialId, "photos", String(pk), "comments");
     const qy = query(colRef, orderBy("createdAt", "desc"), limit(50));
     const snap = await getDocs(qy);
 
@@ -135,7 +145,7 @@ async function loadModerationList(memorialId){
       if (!showHidden && hidden) return;
 
       rows.push({
-        photoId: String(i),
+        photoId: String(pk),
         commentId: d.id,
         name: c.name || "Usuario",
         text: c.text || "",

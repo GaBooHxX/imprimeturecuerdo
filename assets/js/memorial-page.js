@@ -18,6 +18,7 @@ import {
   getFirestore,
   doc,
   getDoc,
+  getDocs,
   setDoc,
   deleteDoc,
   collection,
@@ -92,6 +93,54 @@ function commentsCol(memorialId, photoIndex){
 }
 function reactionsCol(memorialId, photoIndex){
   return collection(db, "memorials", memorialId, "photos", String(photoIndex), "reactions");
+}
+
+/* ---------------- Contenido dinámico (subido desde el panel) ---------------- */
+function contentDoc(memorialId){
+  return doc(db, "memorials", memorialId, "meta", "content");
+}
+function galleryCol(memorialId){
+  return collection(db, "memorials", memorialId, "gallery");
+}
+
+// Acepta enlaces de YouTube en cualquier formato y devuelve el "embed".
+function toYouTubeEmbed(url){
+  if (!url) return "";
+  const u = String(url).trim();
+  if (u.includes("/embed/")) return u;
+
+  let id = "";
+  const m1 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+  const m2 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  const m3 = u.match(/\/shorts\/([A-Za-z0-9_-]{6,})/);
+  if (m1) id = m1[1];
+  else if (m2) id = m2[1];
+  else if (m3) id = m3[1];
+  else if (/^[A-Za-z0-9_-]{6,}$/.test(u)) id = u; // solo el ID
+
+  return id ? `https://www.youtube.com/embed/${id}` : u;
+}
+
+// Lee overrides de Firestore (contenido + galería subida). Nunca rompe la carga.
+async function loadDynamicContent(memorialId){
+  let content = {};
+  let gallery = [];
+
+  try{
+    const snap = await getDoc(contentDoc(memorialId));
+    if (snap.exists()) content = snap.data() || {};
+  }catch(e){
+    console.warn("No se pudo leer contenido dinámico:", e?.code || e);
+  }
+
+  try{
+    const snap = await getDocs(query(galleryCol(memorialId), orderBy("order", "asc")));
+    gallery = snap.docs.map(x => ({ key: x.id, ...(x.data() || {}) }));
+  }catch(e){
+    console.warn("No se pudo leer galería dinámica:", e?.code || e);
+  }
+
+  return { content, gallery };
 }
 
 /* ---------------- Velas globales ---------------- */
@@ -559,6 +608,9 @@ function setupLightboxFirebase(gallery){
   let unsubComments = null;
   let unsubReactions = null;
 
+  // Clave estable de cada foto (id del documento subido, o el índice original).
+  const keyOf = (i) => gallery[i]?.key ?? String(i);
+
   function setAuthUI(user){
     const reactBtns = document.querySelectorAll(".rBtn");
     if (user){
@@ -636,7 +688,7 @@ function setupLightboxFirebase(gallery){
     if (unsubReactions) unsubReactions();
 
     unsubComments = onSnapshot(
-      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
+      query(commentsCol(memorialId, keyOf(current)), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
 
@@ -673,7 +725,7 @@ function setupLightboxFirebase(gallery){
     );
 
     unsubReactions = onSnapshot(
-      reactionsCol(memorialId, current),
+      reactionsCol(memorialId, keyOf(current)),
       (snap) => {
         const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
         snap.forEach(docu => {
@@ -708,7 +760,7 @@ function setupLightboxFirebase(gallery){
     if (unsubReactions) unsubReactions();
 
     unsubComments = onSnapshot(
-      query(commentsCol(memorialId, current), orderBy("createdAt", "desc")),
+      query(commentsCol(memorialId, keyOf(current)), orderBy("createdAt", "desc")),
       (snap) => {
         if (!commentsList) return;
         if (snap.empty){
@@ -744,7 +796,7 @@ function setupLightboxFirebase(gallery){
     );
 
     unsubReactions = onSnapshot(
-      reactionsCol(memorialId, current),
+      reactionsCol(memorialId, keyOf(current)),
       (snap) => {
         const sum = { "❤️":0,"🙏":0,"🕯️":0,"🌟":0,"😢":0 };
         snap.forEach(docu => {
@@ -832,7 +884,7 @@ function setupLightboxFirebase(gallery){
     if (!text) return;
 
     try{
-      await addDoc(commentsCol(memorialId, current), {
+      await addDoc(commentsCol(memorialId, keyOf(current)), {
         uid: user.uid,
         name: user.displayName || "Usuario",
         text: text.slice(0, 500),
@@ -857,7 +909,7 @@ function setupLightboxFirebase(gallery){
       }
 
       const emo = btn.dataset.r;
-      const reactionRef = doc(reactionsCol(memorialId, current), user.uid);
+      const reactionRef = doc(reactionsCol(memorialId, keyOf(current)), user.uid);
       const sRef = statsDoc(memorialId);
 
       try{
@@ -1003,16 +1055,32 @@ async function loadMemorial(){
   if (!res.ok) throw new Error("No se pudo cargar data.json");
   const d = await res.json();
 
+  // 🔄 Contenido subido desde el panel (sobreescribe data.json cuando existe)
+  const { content: dyn, gallery: dynGallery } = await loadDynamicContent(memorialId);
+
+  // Textos
+  if (dyn.name) d.name = dyn.name;
+  if (dyn.dates) d.dates = dyn.dates;
+  if (dyn.bio) d.bio = dyn.bio;
+  if (Array.isArray(dyn.quotes) && dyn.quotes.length) d.quotes = dyn.quotes;
+  if (dyn.history){
+    d.sections = Array.isArray(d.sections) ? d.sections.slice() : [];
+    const idx = d.sections.findIndex(s => String(s.title || "").toLowerCase().includes("historia"));
+    if (idx >= 0) d.sections[idx] = { ...d.sections[idx], type: "text", content: dyn.history };
+    else d.sections.unshift({ title: "Historia", type: "text", content: dyn.history });
+  }
+
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";
 
+  const coverSrc = dyn.coverUrl || d.cover || "";
   const cover = document.getElementById("cover");
   if (cover){
-    cover.src = d.cover || "";
+    cover.src = coverSrc;
     cover.alt = d.name ? `Foto de ${d.name}` : "Foto";
   }
   const coverBg = document.getElementById("coverBg");
   if (coverBg){
-    coverBg.src = d.cover || "";
+    coverBg.src = coverSrc;
   }
 
   const nameEl = document.getElementById("name");
@@ -1024,8 +1092,19 @@ async function loadMemorial(){
 
   injectEmotionalBlocks(d);
 
-  const items = Array.isArray(d.gallery) ? d.gallery : [];
-  const gallery = items.map(x => (typeof x === "string" ? ({ src: x, caption: "" }) : x));
+  // Galería: si hay fotos subidas en la nube, se usan esas (con su clave estable);
+  // si no, se usan las de data.json (clave = índice, para conservar comentarios).
+  let gallery;
+  if (dynGallery.length){
+    gallery = dynGallery.map(x => ({ src: x.url, caption: x.caption || "", key: x.key }));
+  } else {
+    const items = Array.isArray(d.gallery) ? d.gallery : [];
+    gallery = items.map((x, i) => {
+      const o = (typeof x === "string") ? { src: x, caption: "" } : x;
+      return { src: o.src, caption: o.caption || "", key: String(i) };
+    });
+  }
+
   const g = document.getElementById("gallery");
   if (g){
     g.innerHTML = gallery.map((it, i) => `
@@ -1038,21 +1117,23 @@ async function loadMemorial(){
     `).join("");
   }
 
-  if (d.video?.youtubeEmbedUrl){
+  const videoUrl = dyn.videoUrl || d.video?.youtubeEmbedUrl;
+  if (videoUrl){
     const vs = document.getElementById("videoSection");
     const vf = document.getElementById("videoFrame");
     if (vs) vs.hidden = false;
     if (vf){
-      vf.src = d.video.youtubeEmbedUrl;
+      vf.src = toYouTubeEmbed(videoUrl);
       vf.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
     }
   }
 
-  if (d.audio?.src){
+  const audioSrc = dyn.audioUrl || d.audio?.src;
+  if (audioSrc){
     const as = document.getElementById("audioSection");
     const ap = document.getElementById("audioPlayer");
     if (as) as.hidden = false;
-    if (ap) ap.src = d.audio.src;
+    if (ap) ap.src = audioSrc;
 
     setupAudioUX();
   }

@@ -748,3 +748,188 @@ a{color:inherit;text-decoration:none}
   z-index: 1;
 }
 
+/* ============================================================
+   REDISEÑO 2026 — Homenaje (tipografía serif + tono cálido)
+   Bloque de mejoras visuales. Se carga al final para refinar
+   sin tocar la lógica ni los nombres de clase existentes.
+   ============================================================ */
+:root{
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --sans: "Inter", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  --gold: #d8b878;
+  --gold-soft: rgba(216,184,120,.16);
+  --bg: #070608;
+}
+
+body{
+  font-family: var(--sans);
+  background:
+    radial-gradient(1200px 760px at 50% -8%, rgba(216,184,120,.10), transparent 60%),
+    radial-gradient(900px 600px at 50% 110%, rgba(216,184,120,.05), transparent 60%),
+    #070608;
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Encabezado superior un poco más sobrio */
+.mTop strong{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: .3px;
+}
+
+/* ---------- Portada ---------- */
+.mCoverWrap{
+  height: 66vh;
+  max-height: 560px;
+  border-radius: 22px;
+  border: 1px solid rgba(216,184,120,.18);
+  box-shadow: 0 30px 80px rgba(0,0,0,.55);
+}
+.mCoverWrap::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  background: linear-gradient(180deg, rgba(7,6,8,.10) 0%, transparent 28%, transparent 62%, rgba(7,6,8,.78) 100%);
+}
+
+/* ---------- Nombre, fechas y bio ---------- */
+.mName{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1.04;
+  letter-spacing: .2px;
+  text-align: center;
+  margin: 22px 0 0;
+  background: linear-gradient(180deg, #fbf6ec, #e6d6b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.mName::before{
+  content: "En memoria de";
+  display: block;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  opacity: .85;
+  margin-bottom: 12px;
+}
+.mDates{
+  text-align: center;
+  margin: 12px 0 0;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: rgba(216,184,120,.85);
+}
+.mDates::before,
+.mDates::after{
+  content: "✦";
+  font-size: 9px;
+  margin: 0 12px;
+  color: rgba(216,184,120,.55);
+  vertical-align: middle;
+}
+.mBio{
+  border: 0;
+  padding: 0;
+  max-width: 60ch;
+  margin: 22px auto 6px;
+  text-align: center;
+  font-family: var(--serif);
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-style: italic;
+  line-height: 1.6;
+  color: rgba(245,240,230,.92);
+}
+.mBio::after{
+  content:"";
+  display:block;
+  width: 70px;
+  height: 1px;
+  margin: 22px auto 0;
+  background: linear-gradient(90deg, transparent, rgba(216,184,120,.7), transparent);
+}
+
+/* ---------- Secciones ---------- */
+.mSection{
+  padding: 22px 22px 24px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+  margin-top: 22px;
+}
+.mSection > h2{
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 27px;
+  letter-spacing: .2px;
+  margin: 0 0 14px;
+  padding-bottom: 12px;
+  position: relative;
+}
+.mSection > h2::after{
+  content:"";
+  position:absolute;
+  left:0; bottom:0;
+  width: 46px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+
+/* ---------- Frases ---------- */
+.mQuotes{ gap: 12px; }
+.mQuote{
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.55;
+  text-align: center;
+  padding: 18px 20px;
+  border: 1px solid rgba(216,184,120,.18);
+  background: var(--gold-soft);
+}
+
+/* Texto largo (historia) más legible */
+.mProse{ font-size: 15.5px; line-height: 1.85; }
+.mList{ font-size: 15px; line-height: 1.8; }
+
+/* ---------- Galería ---------- */
+.mGallery{ gap: 12px; }
+.mThumb{
+  height: 200px;
+  border-radius: 14px;
+  transition: transform .5s ease, filter .5s ease;
+  filter: saturate(.96) brightness(.97);
+}
+.mThumbBtn:hover .mThumb{
+  transform: scale(1.04);
+  filter: saturate(1.05) brightness(1.03);
+}
+.mThumbWrap{ overflow: hidden; border-radius: 14px; position: relative; }
+.mCap{
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  padding: 8px 6px 4px;
+}
+
+/* ---------- Velas / divisores / títulos de modales ---------- */
+.wGate__title,
+.pLoader__txt strong{ font-family: var(--serif); font-weight: 600; }
+.wGate__title{ font-size: 26px; }
+.lb__panel h2, .lb__panel h3{ font-family: var(--serif); }
+
+@media (max-width: 520px){
+  .mThumb{ height: 240px; }
+  .mCoverWrap{ height: 58vh; }
+}
+

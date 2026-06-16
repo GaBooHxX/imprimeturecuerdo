@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para "Imprime tu Recuerdo".
+// Lectura pública del memorial; escritura de contenido SOLO para administradores.
+// Cómo aplicarlas: Firebase Console -> Firestore Database -> pestaña "Reglas" ->
+// pega TODO esto -> "Publicar". (Reemplaza las reglas actuales.)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function isGlobalAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    function isMemorialAdmin(mid) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/memorials/$(mid)/admin/$(request.auth.uid));
+    }
+    function isMod(mid) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/memorials/$(mid)/mods/$(request.auth.uid));
+    }
+    function canManage(mid) { return isGlobalAdmin() || isMemorialAdmin(mid); }
+    function canModerate(mid) { return canManage(mid) || isMod(mid); }
+
+    // Administradores globales (se asignan a mano desde la consola)
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /memorials/{mid} {
+      allow read: if true;
+
+      // Admin del memorial (se asigna a mano desde la consola)
+      match /admin/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || canManage(mid));
+        allow write: if false;
+      }
+
+      // Moderadores (los asigna un admin desde el panel)
+      match /mods/{uid} {
+        allow read: if signedIn() && (request.auth.uid == uid || canModerate(mid));
+        allow write: if canManage(mid);
+      }
+
+      // Textos editables y galería: cualquiera puede leer, solo admin escribe
+      match /meta/content {
+        allow read: if true;
+        allow write: if canManage(mid);
+      }
+      match /gallery/{photoKey} {
+        allow read: if true;
+        allow write: if canManage(mid);
+      }
+
+      // Estadísticas / visitas: lectura pública; las visitas suman desde cualquier visitante
+      match /meta/stats {
+        allow read: if true;
+        allow write: if true;
+      }
+
+      // Velas virtuales: una por usuario conectado
+      match /candles/{uid} {
+        allow read: if true;
+        allow create, update, delete: if signedIn() && request.auth.uid == uid;
+      }
+
+      // Comentarios por foto
+      match /photos/{pid}/comments/{cid} {
+        allow read: if true;
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+        allow update: if canModerate(mid) ||
+                         (signedIn() && resource.data.uid == request.auth.uid);
+        allow delete: if canModerate(mid);
+      }
+
+      // Reacciones por foto: una por usuario conectado
+      match /photos/{pid}/reactions/{uid} {
+        allow read: if true;
+        allow write: if signedIn() && request.auth.uid == uid;
+      }
+    }
+  }
+}

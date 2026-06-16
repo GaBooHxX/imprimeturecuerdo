@@ -115,9 +115,19 @@ async function checkMemorialAdmin(uid, memorialId){
   return snap.exists();
 }
 
-/* Sacar cantidad de fotos desde data.json del memorial */
-async function getPhotoCountFromDataJson(memorialId){
-  // Probamos rutas típicas (ajusta si tu sitio usa otra)
+/* Claves de fotos del memorial: galería subida (Firestore) o, si no hay, índices de data.json */
+async function getPhotoKeys(memorialId){
+  // 1) Galería subida desde el panel
+  try{
+    const snap = await getDocs(
+      query(collection(db, "memorials", memorialId, "gallery"), orderBy("order", "asc"))
+    );
+    if (!snap.empty){
+      return { keys: snap.docs.map(d => d.id), urlUsed: "firestore:gallery" };
+    }
+  }catch(_){}
+
+  // 2) Fallback: fotos originales en data.json
   const candidates = [
     `/memoriales/${memorialId}/data.json`,
     `/memorial/${memorialId}/data.json`,
@@ -133,10 +143,10 @@ async function getPhotoCountFromDataJson(memorialId){
       if (!res.ok) continue;
       const d = await res.json();
       const items = Array.isArray(d.gallery) ? d.gallery : [];
-      return { count: items.length, urlUsed: url };
+      return { keys: items.map((_, i) => String(i)), urlUsed: url };
     }catch(_){}
   }
-  return { count: 0, urlUsed: null };
+  return { keys: [], urlUsed: null };
 }
 
 /* ---------- events ---------- */
@@ -265,22 +275,22 @@ async function loadComments(){
   commentsList.innerHTML = "Cargando…";
 
   try{
-    const { count: photoCount, urlUsed } = await getPhotoCountFromDataJson(currentMemorialId);
+    const { keys: photoKeys } = await getPhotoKeys(currentMemorialId);
 
-    if (!photoCount){
+    if (!photoKeys.length){
       commentsList.innerHTML = `<div class="muted">
-        No pude leer gallery desde data.json del memorial.<br>
-        Revisa que exista: <code>/memoriales/${escapeHtml(currentMemorialId)}/data.json</code> (o ruta equivalente).
+        No pude detectar fotos del memorial.<br>
+        Revisa que exista la galería en Firestore o <code>/memoriales/${escapeHtml(currentMemorialId)}/data.json</code>.
       </div>`;
       return;
     }
 
     const blocks = [];
 
-    for (let i = 0; i < photoCount; i++){
+    for (const pk of photoKeys){
       const commentsSnap = await getDocs(
         query(
-          collection(db, "memorials", currentMemorialId, "photos", String(i), "comments"),
+          collection(db, "memorials", currentMemorialId, "photos", String(pk), "comments"),
           orderBy("createdAt", "desc"),
           limit(200)
         )
@@ -293,7 +303,7 @@ async function loadComments(){
         if (hidden && !showHidden.checked) return;
 
         blocks.push({
-          photoId: String(i),
+          photoId: String(pk),
           commentId: c.id,
           name: d.name || "Anónimo",
           text: d.text || "",
