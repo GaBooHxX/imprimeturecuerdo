@@ -84,12 +84,17 @@ const btnClearVideo = $("btnClearVideo");
 const btnUploadAudio = $("btnUploadAudio");
 const audioList = $("audioList");
 
+const btnUploadHomage = $("btnUploadHomage");
+const btnClearHomage = $("btnClearHomage");
+const homagePreview = $("homagePreview");
+
 const tlList = $("tlList");
 const btnAddTL = $("btnAddTL");
 const btnSaveTL = $("btnSaveTL");
 
 const qrBox = $("qrBox");
 const btnDownloadQR = $("btnDownloadQR");
+const btnDownloadQRSVG = $("btnDownloadQRSVG");
 const qrUrl = $("qrUrl");
 
 const SITE_BASE = "https://gaboohxx.github.io/imprimeturecuerdo";
@@ -193,6 +198,28 @@ function applyAdminUI(){
 btnLoadMemorial?.addEventListener("click", loadMemorial);
 memorialIdInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") loadMemorial(); });
 
+function slugify(s){
+  return String(s)
+    .normalize("NFD")                 // separa letras de sus acentos
+    .replace(/[^\x00-\x7F]/g, "")     // elimina los acentos (no-ASCII)
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+const btnNewMemorial = $("btnNewMemorial");
+btnNewMemorial?.addEventListener("click", async () => {
+  if (!auth.currentUser){ showError("Inicia sesión primero."); return; }
+  const name = (window.prompt("Nombre de la persona (ej: María González Pérez):") || "").trim();
+  if (!name) return;
+  const slug = slugify(name);
+  if (!slug){ showError("Ese nombre no genera un identificador válido."); return; }
+  memorialIdInput.value = slug;
+  await loadMemorial();
+  if (isAdmin && fName){ fName.value = name; } // prellena el nombre para ahorrar pasos
+  showOk("✨ Memorial nuevo listo. Completa los datos, sube fotos y pulsa Guardar.");
+});
+
 async function loadMemorial(){
   const v = (memorialIdInput.value || "").trim();
   if (!v) return;
@@ -268,6 +295,11 @@ async function loadTextsAndMeta(){
   audiosCache = audios;
   renderAudios();
 
+  // Música del Modo homenaje
+  const homageUrl = c.homageMusicUrl || "";
+  if (homageUrl){ homagePreview.src = previewSrc(homageUrl); homagePreview.hidden = false; }
+  else if (homagePreview){ homagePreview.hidden = true; }
+
   // Línea de tiempo
   const timeline = Array.isArray(c.timeline) ? c.timeline : (Array.isArray(base.timeline) ? base.timeline : []);
   timelineCache = timeline.map(t => ({ year: t.year || "", title: t.title || "", text: t.text || "" }));
@@ -318,31 +350,50 @@ btnSaveText?.addEventListener("click", async () => {
   }catch(e){ showError("No se pudieron guardar los textos: " + (e?.code || e)); }
 });
 
-/* ---------- Código QR ---------- */
+/* ---------- Código QR (canvas para ver, SVG para impresión 3D) ---------- */
 function renderQR(){
   if (!qrBox || !window.QRCode || !memorialId) return;
   const url = publicMemorialUrl(memorialId);
   qrBox.innerHTML = "";
-  new window.QRCode(qrBox, {
-    text: url,
-    width: 240,
-    height: 240,
-    correctLevel: window.QRCode.CorrectLevel.M
+  const canvas = document.createElement("canvas");
+  qrBox.appendChild(canvas);
+  window.QRCode.toCanvas(canvas, url, { width: 280, margin: 2, errorCorrectionLevel: "M" }, (err) => {
+    if (err) console.warn("QR:", err);
   });
   if (qrUrl) qrUrl.textContent = url;
 }
 
+function downloadBlob(content, type, filename){
+  const blob = new Blob([content], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// PNG (para compartir o pegar en un documento)
 btnDownloadQR?.addEventListener("click", () => {
   const canvas = qrBox?.querySelector("canvas");
-  const img = qrBox?.querySelector("img");
-  const dataUrl = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
-  if (!dataUrl) return;
+  if (!canvas) return;
   const a = document.createElement("a");
-  a.href = dataUrl;
+  a.href = canvas.toDataURL("image/png");
   a.download = `QR-${memorialId}.png`;
   document.body.appendChild(a);
   a.click();
   a.remove();
+});
+
+// SVG (vector, ideal para impresión 3D en PETG)
+btnDownloadQRSVG?.addEventListener("click", () => {
+  if (!window.QRCode || !memorialId) return;
+  const url = publicMemorialUrl(memorialId);
+  window.QRCode.toString(url, { type: "svg", margin: 2, errorCorrectionLevel: "M" }, (err, svg) => {
+    if (err){ showError("No se pudo generar el SVG: " + err); return; }
+    downloadBlob(svg, "image/svg+xml", `QR-${memorialId}.svg`);
+  });
 });
 
 /* ---------- Línea de tiempo ---------- */
@@ -636,6 +687,26 @@ btnUploadAudio?.addEventListener("click", () => {
     renderAudios();
     showOk("Audio agregado ✅");
   });
+});
+
+/* ---------- Música del Modo homenaje ---------- */
+btnUploadHomage?.addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+  openWidget({
+    multiple: false,
+    resourceType: "auto",
+    clientAllowedFormats: ["mp3", "m4a", "wav", "ogg", "aac", "mpeg"]
+  }, async (info) => {
+    await setDoc(contentDoc(), { homageMusicUrl: info.secure_url, updatedAt: serverTimestamp() }, { merge: true });
+    homagePreview.src = info.secure_url; homagePreview.hidden = false;
+    showOk("Música de homenaje guardada ✅");
+  });
+});
+btnClearHomage?.addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+  await setDoc(contentDoc(), { homageMusicUrl: "", updatedAt: serverTimestamp() }, { merge: true });
+  if (homagePreview) homagePreview.hidden = true;
+  showOk("Música quitada");
 });
 
 /* ---------- util ---------- */

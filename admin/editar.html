@@ -34,6 +34,7 @@
     <div class="row">
       <input id="memorialIdInput" class="input" placeholder="Camilo-Fuentes" value="Camilo-Fuentes" />
       <button id="btnLoadMemorial" class="btn" type="button">Cargar</button>
+      <button id="btnNewMemorial" class="btn primary" type="button">➕ Nuevo memorial</button>
       <a id="linkView" class="btn ghost" href="#" target="_blank" rel="noopener">Ver memorial ↗</a>
     </div>
     <div class="muted" style="margin-top:10px">Editando: <strong id="memorialActive">—</strong></div>
@@ -131,23 +132,36 @@
       <div id="audioList" class="audioList"></div>
     </section>
 
+    <!-- Música del Modo homenaje -->
+    <section class="card">
+      <h2>🎼 Música del Modo homenaje</h2>
+      <p class="muted">Una pista suave (instrumental) que suena en bucle durante el pase de fotos a pantalla completa. Si no subes ninguna, usará el primer audio del memorial.</p>
+      <div class="row">
+        <button id="btnUploadHomage" class="btn primary" type="button">Subir música</button>
+        <button id="btnClearHomage" class="btn ghost" type="button">Quitar</button>
+      </div>
+      <audio id="homagePreview" controls style="width:100%; margin-top:12px" hidden></audio>
+    </section>
+
     <!-- Código QR -->
     <section class="card">
       <h2>📱 Código QR del memorial</h2>
-      <p class="muted">Para imprimir en una placa o lápida. Al escanearlo con el celular, lleva directo a este memorial.</p>
+      <p class="muted">Al escanearlo con el celular, lleva directo a este memorial. Para una placa impresa en 3D (PETG), descarga el <strong>SVG</strong> (vector, no se pixela).</p>
       <div id="qrBox" class="qrBox"></div>
       <div class="row" style="margin-top:12px">
-        <button id="btnDownloadQR" class="btn primary" type="button">Descargar QR (PNG)</button>
-        <span class="muted" id="qrUrl" style="word-break:break-all"></span>
+        <button id="btnDownloadQRSVG" class="btn primary" type="button">Descargar para 3D (SVG)</button>
+        <button id="btnDownloadQR" class="btn" type="button">Descargar (PNG)</button>
       </div>
+      <p class="muted" id="qrUrl" style="word-break:break-all; margin-top:10px"></p>
+      <p class="muted" style="margin-top:6px">💡 Para impresión 3D: importa el SVG en <strong>Tinkercad</strong> o <strong>Fusion</strong>, dale relieve (extrusión) sobre una placa y exporta el STL.</p>
     </section>
 
   </div>
 
   <!-- Cloudinary Upload Widget -->
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
-  <!-- Generador de QR -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Generador de QR (con exportación SVG para impresión 3D) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script type="module" src="../assets/js/editar.js"></script>
 </body>
 </html>

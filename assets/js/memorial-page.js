@@ -1294,7 +1294,7 @@ function setupGuestbook(memorialId){
 }
 
 /* ---------------- Modo presentación (slideshow) ---------------- */
-function setupSlideshow(gallery, audios){
+function setupSlideshow(gallery, audios, homageMusicUrl){
   const btn = document.getElementById("btnSlideshow");
   const overlay = document.getElementById("slideshow");
   if (!btn || !overlay) return;
@@ -1305,8 +1305,11 @@ function setupSlideshow(gallery, audios){
   const img = document.getElementById("ssImg");
   const cap = document.getElementById("ssCap");
   const closeBtn = document.getElementById("ssClose");
-  const player = document.getElementById("audioPlayer");
   let i = 0, timer = null;
+
+  // Música suave del homenaje: pista dedicada (si se subió), o si no, el primer audio.
+  const musicUrl = homageMusicUrl || (audios[0] && audios[0].url) || "";
+  let music = null;
 
   function show(n){
     i = (n % gallery.length + gallery.length) % gallery.length;
@@ -1323,8 +1326,11 @@ function setupSlideshow(gallery, audios){
     document.body.style.overflow = "hidden";
     show(0);
     timer = setInterval(() => show(i + 1), 4500);
-    if (player && audios.length){
-      try{ player.volume = 0.2; if (player.paused) player.play().catch(() => {}); }catch(e){}
+    if (musicUrl){
+      try{
+        if (!music){ music = new Audio(musicUrl); music.loop = true; music.volume = 0.25; }
+        music.play().catch(() => {});
+      }catch(e){}
     }
   }
   function stop(){
@@ -1332,6 +1338,7 @@ function setupSlideshow(gallery, audios){
     document.body.style.overflow = "";
     if (timer) clearInterval(timer);
     timer = null;
+    if (music){ try{ music.pause(); }catch(e){} }
   }
 
   btn.addEventListener("click", start);
@@ -1439,7 +1446,7 @@ async function loadMemorial(){
 
   renderTimeline(Array.isArray(dyn.timeline) ? dyn.timeline : d.timeline);
   setupGuestbook(memorialId);
-  setupSlideshow(gallery, audios);
+  setupSlideshow(gallery, audios, dyn.homageMusicUrl || d.homageMusicUrl);
 
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);
