@@ -1005,3 +1005,73 @@ body{
   text-align: center;
 }
 
+/* ---------- Línea de tiempo ---------- */
+.mTimeline{
+  position: relative;
+  margin-top: 8px;
+  padding-left: 26px;
+}
+.mTimeline::before{
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(216,184,120,.6), rgba(216,184,120,.12));
+}
+.mTLItem{
+  position: relative;
+  padding: 0 0 20px;
+}
+.mTLItem:last-child{ padding-bottom: 0; }
+.mTLItem::before{
+  content: "";
+  position: absolute;
+  left: -23px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(216,184,120,.15);
+}
+.mTLYear{
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(216,184,120,.9);
+  letter-spacing: .5px;
+}
+.mTLTitle{
+  margin: 2px 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.mTLText{
+  margin: 0;
+  color: rgba(238,241,247,.85);
+  line-height: 1.6;
+  font-size: 14.5px;
+}
+
+/* ---------- Libro de condolencias ---------- */
+.gbForm{ display: grid; gap: 10px; }
+#gbText{
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+  color: rgba(238,241,247,.92);
+  border-radius: 14px;
+  padding: 12px 14px;
+  outline: none;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+}
+#gbText:disabled{ opacity: .55; }
+#gbSend{ justify-self: start; }
+.gbList{ display: grid; gap: 10px; }
+

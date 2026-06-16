@@ -42,6 +42,7 @@ let memorialId = null;
 let isAdmin = false;
 let galleryCache = []; // [{key, url, caption, order, ...}]
 let audiosCache = []; // [{url, caption}]
+let timelineCache = []; // [{year, title, text}]
 
 /* ---------- refs ---------- */
 const $ = (id) => document.getElementById(id);
@@ -82,6 +83,10 @@ const btnClearVideo = $("btnClearVideo");
 
 const btnUploadAudio = $("btnUploadAudio");
 const audioList = $("audioList");
+
+const tlList = $("tlList");
+const btnAddTL = $("btnAddTL");
+const btnSaveTL = $("btnSaveTL");
 
 /* ---------- helpers UI ---------- */
 function showError(msg){
@@ -182,7 +187,10 @@ async function loadMemorial(){
   if (!v) return;
   memorialId = v;
   memorialActive.textContent = v;
-  linkView.href = `../memoriales/${encodeURIComponent(v)}/`;
+  // Camilo tiene carpeta propia; los memoriales nuevos usan la página genérica.
+  linkView.href = (v === "Camilo-Fuentes")
+    ? "../memoriales/Camilo-Fuentes/"
+    : `../memorial/?m=${encodeURIComponent(v)}`;
 
   const user = auth.currentUser;
   if (!user) return;
@@ -248,6 +256,11 @@ async function loadTextsAndMeta(){
   }
   audiosCache = audios;
   renderAudios();
+
+  // Línea de tiempo
+  const timeline = Array.isArray(c.timeline) ? c.timeline : (Array.isArray(base.timeline) ? base.timeline : []);
+  timelineCache = timeline.map(t => ({ year: t.year || "", title: t.title || "", text: t.text || "" }));
+  renderTimelineEditor();
 }
 
 function renderAudios(){
@@ -292,6 +305,60 @@ btnSaveText?.addEventListener("click", async () => {
     }, { merge: true });
     showOk("Textos guardados ✅");
   }catch(e){ showError("No se pudieron guardar los textos: " + (e?.code || e)); }
+});
+
+/* ---------- Línea de tiempo ---------- */
+function escTxt(s){ return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function escAttr(s){ return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
+function renderTimelineEditor(){
+  if (!tlList) return;
+  if (!timelineCache.length){
+    tlList.innerHTML = `<div class="muted">Aún no hay hitos. Usa “+ Agregar hito”.</div>`;
+    return;
+  }
+  tlList.innerHTML = timelineCache.map((t, i) => `
+    <div class="tlRow" data-i="${i}">
+      <input class="input tlYear" placeholder="Año" value="${escAttr(t.year)}">
+      <input class="input tlTitle" placeholder="Título (ej: Nació en Santiago)" value="${escAttr(t.title)}">
+      <textarea class="input tlText" rows="2" placeholder="Descripción breve…">${escTxt(t.text)}</textarea>
+      <button class="mini danger" type="button" data-act="delTL">Eliminar</button>
+    </div>
+  `).join("");
+}
+
+function collectTimeline(keepEmpty){
+  if (!tlList) return [];
+  const rows = [...tlList.querySelectorAll(".tlRow")].map(row => ({
+    year: (row.querySelector(".tlYear")?.value || "").trim(),
+    title: (row.querySelector(".tlTitle")?.value || "").trim(),
+    text: (row.querySelector(".tlText")?.value || "").trim()
+  }));
+  return keepEmpty ? rows : rows.filter(t => t.year || t.title || t.text);
+}
+
+btnAddTL?.addEventListener("click", () => {
+  if (!ensureAdmin()) return;
+  timelineCache = collectTimeline(true);
+  timelineCache.push({ year: "", title: "", text: "" });
+  renderTimelineEditor();
+});
+
+tlList?.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-act='delTL']");
+  if (!b) return;
+  const i = Number(b.closest(".tlRow")?.dataset.i);
+  timelineCache = collectTimeline(true).filter((_, k) => k !== i);
+  renderTimelineEditor();
+});
+
+btnSaveTL?.addEventListener("click", async () => {
+  if (!ensureAdmin()) return;
+  timelineCache = collectTimeline(false);
+  try{
+    await setDoc(contentDoc(), { timeline: timelineCache, updatedAt: serverTimestamp() }, { merge: true });
+    showOk("Línea de tiempo guardada ✅");
+  }catch(e){ showError("No se pudo guardar la línea de tiempo: " + (e?.code || e)); }
 });
 
 /* ---------- Cloudinary ---------- */

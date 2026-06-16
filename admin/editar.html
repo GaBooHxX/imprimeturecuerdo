@@ -37,6 +37,11 @@
       <a id="linkView" class="btn ghost" href="#" target="_blank" rel="noopener">Ver memorial ↗</a>
     </div>
     <div class="muted" style="margin-top:10px">Editando: <strong id="memorialActive">—</strong></div>
+    <p class="muted" style="margin-top:8px">
+      💡 Para crear un <strong>memorial nuevo</strong> (otro familiar), escribe un nombre sin espacios
+      (ej: <code>Tia-Maria</code>), pulsa <strong>Cargar</strong> y empieza a editar. Se publica en
+      <code>/memorial/?m=NOMBRE</code>.
+    </p>
   </section>
 
   <!-- ====== Todo lo editable (solo si eres admin) ====== -->
@@ -62,6 +67,17 @@
 
       <div class="row" style="margin-top:12px">
         <button id="btnSaveText" class="btn primary" type="button">Guardar textos</button>
+      </div>
+    </section>
+
+    <!-- Línea de tiempo -->
+    <section class="card">
+      <h2>⏳ Línea de tiempo de su vida</h2>
+      <p class="muted">Agrega hitos importantes: año, título y una breve descripción. Aparecen en orden en el memorial.</p>
+      <div id="tlList" class="tlList"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="btnAddTL" class="btn" type="button">+ Agregar hito</button>
+        <button id="btnSaveTL" class="btn primary" type="button">Guardar línea de tiempo</button>
       </div>
     </section>
 

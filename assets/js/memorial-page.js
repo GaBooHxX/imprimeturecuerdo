@@ -76,7 +76,7 @@ function escapeHtml(s){
 
 function getMemorialId(){
   const url = new URL(location.href);
-  const mid = url.searchParams.get("mid");
+  const mid = url.searchParams.get("mid") || url.searchParams.get("m");
   if (mid) return mid;
 
   const parts = location.pathname.split("/").filter(Boolean);
@@ -119,6 +119,26 @@ function toYouTubeEmbed(url){
   else if (/^[A-Za-z0-9_-]{6,}$/.test(u)) id = u; // solo el ID
 
   return id ? `https://www.youtube.com/embed/${id}` : u;
+}
+
+// Carga data.json si existe (memorial con carpeta propia). Es OPCIONAL.
+async function loadBaseData(memorialId){
+  const candidates = [
+    "data.json",
+    `../memoriales/${memorialId}/data.json`,
+    `memoriales/${memorialId}/data.json`
+  ];
+  for (const url of candidates){
+    try{
+      const r = await fetch(url, { cache: "no-store" });
+      if (r.ok) return await r.json();
+    }catch(_){}
+  }
+  return {};
+}
+
+function guestbookCol(memorialId){
+  return collection(db, "memorials", memorialId, "guestbook");
 }
 
 // Lee overrides de Firestore (contenido + galería subida). Nunca rompe la carga.
@@ -1174,6 +1194,88 @@ function setupAudioCarousel(audios){
   setupAudioUX();
 }
 
+/* ---------------- Línea de tiempo de su vida ---------------- */
+function renderTimeline(items){
+  const sec = document.getElementById("timelineSection");
+  const host = document.getElementById("timeline");
+  if (!sec || !host) return;
+
+  const list = Array.isArray(items) ? items.filter(x => x && (x.title || x.text || x.year)) : [];
+  if (!list.length){ sec.hidden = true; return; }
+
+  sec.hidden = false;
+  host.innerHTML = list.map(it => `
+    <div class="mTLItem">
+      <div class="mTLYear">${escapeHtml(it.year || "")}</div>
+      <div class="mTLBody">
+        ${it.title ? `<h3 class="mTLTitle">${escapeHtml(it.title)}</h3>` : ""}
+        ${it.text ? `<p class="mTLText">${escapeHtml(it.text)}</p>` : ""}
+      </div>
+    </div>
+  `).join("");
+}
+
+/* ---------------- Libro de condolencias ---------------- */
+function setupGuestbook(memorialId){
+  const sec = document.getElementById("guestbook");
+  const text = document.getElementById("gbText");
+  const send = document.getElementById("gbSend");
+  const hint = document.getElementById("gbHint");
+  const list = document.getElementById("gbList");
+  if (!sec || !text || !send || !list) return;
+
+  const col = guestbookCol(memorialId);
+
+  onAuthStateChanged(auth, (user) => {
+    send.disabled = !user;
+    text.disabled = !user;
+    if (hint) hint.style.display = user ? "none" : "block";
+  });
+
+  send.addEventListener("click", async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const t = (text.value || "").trim();
+    if (!t) return;
+    send.disabled = true;
+    try{
+      await addDoc(col, {
+        uid: user.uid,
+        name: user.displayName || "Anónimo",
+        text: t.slice(0, 800),
+        createdAt: serverTimestamp(),
+        hidden: false
+      });
+      text.value = "";
+    }catch(e){
+      showAuthError("No se pudo publicar el mensaje. Error: " + (e?.code || "desconocido"));
+    }finally{
+      send.disabled = !auth.currentUser;
+    }
+  });
+
+  onSnapshot(query(col, orderBy("createdAt", "desc")), (snap) => {
+    if (snap.empty){
+      list.innerHTML = `<div class="lb__hint">Aún no hay mensajes. Sé el primero en dejar unas palabras. 🕯️</div>`;
+      return;
+    }
+    const html = snap.docs.map(docu => {
+      const c = docu.data() || {};
+      if (c.hidden) return "";
+      const ts = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString() : "";
+      return `
+        <div class="cItem">
+          <div><strong>${escapeHtml(c.name || "Anónimo")}</strong></div>
+          <div>${escapeHtml(c.text || "")}</div>
+          <div class="cMeta">${escapeHtml(ts)}</div>
+        </div>`;
+    }).filter(Boolean).join("");
+    list.innerHTML = html || `<div class="lb__hint">Aún no hay mensajes.</div>`;
+  }, (err) => {
+    console.warn("Guestbook snapshot error:", err?.code || err);
+  });
+}
+
 /* ---------------- Main ---------------- */
 async function loadMemorial(){
   showLoader();
@@ -1194,9 +1296,8 @@ async function loadMemorial(){
   await bumpVisit(memorialId);
   setupStatsLive(memorialId);
 
-  const res = await fetch("data.json", { cache: "no-store" });
-  if (!res.ok) throw new Error("No se pudo cargar data.json");
-  const d = await res.json();
+  // data.json es OPCIONAL: la página genérica (/memorial/?m=ID) toma todo de la nube.
+  const d = await loadBaseData(memorialId);
 
   // 🔄 Contenido subido desde el panel (sobreescribe data.json cuando existe)
   const { content: dyn, gallery: dynGallery } = await loadDynamicContent(memorialId);
@@ -1266,6 +1367,9 @@ async function loadMemorial(){
     if (single) audios = [{ url: single, caption: d.audio?.caption || "" }];
   }
   setupAudioCarousel(audios);
+
+  renderTimeline(Array.isArray(dyn.timeline) ? dyn.timeline : d.timeline);
+  setupGuestbook(memorialId);
 
   setupLightboxFirebase(gallery);
   setupGlobalCandles(memorialId);

@@ -92,6 +92,15 @@ service cloud.firestore {
         allow read: if true;
         allow write: if signedIn() && request.auth.uid == uid;
       }
+
+      // Libro de condolencias (muro general de mensajes)
+      match /guestbook/{gid} {
+        allow read: if true;
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+        allow update: if canModerate(mid) ||
+                         (signedIn() && resource.data.uid == request.auth.uid);
+        allow delete: if canModerate(mid);
+      }
     }
   }
 }
