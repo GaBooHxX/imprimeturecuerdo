@@ -95,6 +95,7 @@ const btnSaveTL = $("btnSaveTL");
 const qrBox = $("qrBox");
 const btnDownloadQR = $("btnDownloadQR");
 const btnDownloadQRSVG = $("btnDownloadQRSVG");
+const btnDownloadPlaque = $("btnDownloadPlaque");
 const qrUrl = $("qrUrl");
 
 const SITE_BASE = "https://gaboohxx.github.io/imprimeturecuerdo";
@@ -350,16 +351,77 @@ btnSaveText?.addEventListener("click", async () => {
   }catch(e){ showError("No se pudieron guardar los textos: " + (e?.code || e)); }
 });
 
-/* ---------- Código QR (canvas para ver, SVG para impresión 3D) ---------- */
+/* ---------- Código QR (generamos la matriz y dibujamos PNG/SVG/placa) ---------- */
+function buildQrMatrix(text){
+  const qr = window.qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount();
+  const m = [];
+  for (let r = 0; r < n; r++){
+    const row = [];
+    for (let c = 0; c < n; c++) row.push(qr.isDark(r, c));
+    m.push(row);
+  }
+  return m;
+}
+
+function drawQrCanvas(canvas, m, targetPx, quiet){
+  const n = m.length;
+  const total = n + quiet * 2;
+  const cell = Math.max(2, Math.floor(targetPx / total));
+  const dim = cell * total;
+  canvas.width = dim; canvas.height = dim;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, dim, dim);
+  ctx.fillStyle = "#000000";
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (m[r][c]) ctx.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+}
+
+function qrOnlySvg(m, quiet, unit){
+  const n = m.length;
+  const total = (n + quiet * 2) * unit;
+  let rects = "";
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (m[r][c]) rects += `<rect x="${(c + quiet) * unit}" y="${(r + quiet) * unit}" width="${unit}" height="${unit}"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}mm" height="${total}mm" viewBox="0 0 ${total} ${total}"><rect width="${total}" height="${total}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
+}
+
+// Placa decorada (marco + cruz + QR + nombre/fechas) lista para extruir
+function buildPlaqueSvg(m, name, dates){
+  const W = 90, H = 120, quiet = 2;
+  const n = m.length;
+  const S = 56, qx = (W - S) / 2, qy = 26;
+  const cell = S / (n + quiet * 2);
+  let rects = "";
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (m[r][c]){
+        const x = (qx + (c + quiet) * cell).toFixed(2);
+        const y = (qy + (r + quiet) * cell).toFixed(2);
+        rects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+      }
+  const frame = `<path fill-rule="evenodd" d="M9,3 h72 a6,6 0 0 1 6,6 v102 a6,6 0 0 1 -6,6 h-72 a6,6 0 0 1 -6,-6 v-102 a6,6 0 0 1 6,-6 Z M11,7 h68 a4,4 0 0 1 4,4 v98 a4,4 0 0 1 -4,4 h-68 a4,4 0 0 1 -4,-4 v-98 a4,4 0 0 1 4,-4 Z"/>`;
+  const cross = `<rect x="44" y="10" width="2" height="11" rx="0.4"/><rect x="40.5" y="13.5" width="9" height="2" rx="0.4"/>`;
+  const nm = (name || "").trim();
+  const dt = (dates || "").trim();
+  const nameT = nm ? `<text x="45" y="92" text-anchor="middle" font-family="Georgia, serif" font-size="5" font-weight="600">${escTxt(nm)}</text>` : "";
+  const datesT = dt ? `<text x="45" y="100" text-anchor="middle" font-family="Georgia, serif" font-size="3.4">${escTxt(dt)}</text>` : "";
+  const verse = `<text x="45" y="111" text-anchor="middle" font-family="Georgia, serif" font-size="3" font-style="italic">Siempre en nuestro corazón</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}"><g fill="#111">${frame}${cross}<g>${rects}</g>${nameT}${datesT}${verse}</g></svg>`;
+}
+
 function renderQR(){
-  if (!qrBox || !window.QRCode || !memorialId) return;
+  if (!qrBox || !window.qrcode || !memorialId) return;
   const url = publicMemorialUrl(memorialId);
+  const m = buildQrMatrix(url);
   qrBox.innerHTML = "";
   const canvas = document.createElement("canvas");
   qrBox.appendChild(canvas);
-  window.QRCode.toCanvas(canvas, url, { width: 280, margin: 2, errorCorrectionLevel: "M" }, (err) => {
-    if (err) console.warn("QR:", err);
-  });
+  drawQrCanvas(canvas, m, 280, 4);
   if (qrUrl) qrUrl.textContent = url;
 }
 
@@ -374,26 +436,26 @@ function downloadBlob(content, type, filename){
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-// PNG (para compartir o pegar en un documento)
 btnDownloadQR?.addEventListener("click", () => {
   const canvas = qrBox?.querySelector("canvas");
-  if (!canvas) return;
+  if (!canvas){ showError("El QR aún no está listo."); return; }
   const a = document.createElement("a");
   a.href = canvas.toDataURL("image/png");
   a.download = `QR-${memorialId}.png`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  document.body.appendChild(a); a.click(); a.remove();
 });
 
-// SVG (vector, ideal para impresión 3D en PETG)
 btnDownloadQRSVG?.addEventListener("click", () => {
-  if (!window.QRCode || !memorialId) return;
-  const url = publicMemorialUrl(memorialId);
-  window.QRCode.toString(url, { type: "svg", margin: 2, errorCorrectionLevel: "M" }, (err, svg) => {
-    if (err){ showError("No se pudo generar el SVG: " + err); return; }
-    downloadBlob(svg, "image/svg+xml", `QR-${memorialId}.svg`);
-  });
+  if (!window.qrcode || !memorialId){ showError("El QR aún no está listo."); return; }
+  const m = buildQrMatrix(publicMemorialUrl(memorialId));
+  downloadBlob(qrOnlySvg(m, 4, 4), "image/svg+xml", `QR-${memorialId}.svg`);
+});
+
+btnDownloadPlaque?.addEventListener("click", () => {
+  if (!window.qrcode || !memorialId){ showError("El QR aún no está listo."); return; }
+  const m = buildQrMatrix(publicMemorialUrl(memorialId));
+  const svg = buildPlaqueSvg(m, fName?.value, fDates?.value);
+  downloadBlob(svg, "image/svg+xml", `Placa-${memorialId}.svg`);
 });
 
 /* ---------- Línea de tiempo ---------- */

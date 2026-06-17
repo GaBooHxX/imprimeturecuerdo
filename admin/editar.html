@@ -146,22 +146,23 @@
     <!-- Código QR -->
     <section class="card">
       <h2>📱 Código QR del memorial</h2>
-      <p class="muted">Al escanearlo con el celular, lleva directo a este memorial. Para una placa impresa en 3D (PETG), descarga el <strong>SVG</strong> (vector, no se pixela).</p>
+      <p class="muted">Al escanearlo con el celular, lleva directo a este memorial.</p>
       <div id="qrBox" class="qrBox"></div>
       <div class="row" style="margin-top:12px">
-        <button id="btnDownloadQRSVG" class="btn primary" type="button">Descargar para 3D (SVG)</button>
-        <button id="btnDownloadQR" class="btn" type="button">Descargar (PNG)</button>
+        <button id="btnDownloadPlaque" class="btn primary" type="button">🪦 Placa decorada para lápida (SVG)</button>
+        <button id="btnDownloadQRSVG" class="btn" type="button">Solo el QR (SVG)</button>
+        <button id="btnDownloadQR" class="btn" type="button">QR (PNG)</button>
       </div>
       <p class="muted" id="qrUrl" style="word-break:break-all; margin-top:10px"></p>
-      <p class="muted" style="margin-top:6px">💡 Para impresión 3D: importa el SVG en <strong>Tinkercad</strong> o <strong>Fusion</strong>, dale relieve (extrusión) sobre una placa y exporta el STL.</p>
+      <p class="muted" style="margin-top:6px">💡 Para impresión 3D en PETG: descarga el <strong>SVG</strong>, impórtalo en <strong>Tinkercad</strong> o <strong>Fusion</strong>, dale relieve (extrusión) y exporta el STL. La <strong>placa decorada</strong> incluye marco, cruz, el QR y el nombre.</p>
     </section>
 
   </div>
 
   <!-- Cloudinary Upload Widget -->
   <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
-  <!-- Generador de QR (con exportación SVG para impresión 3D) -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <!-- Generador de QR (confiable; genera la matriz y dibujamos PNG/SVG nosotros) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <script type="module" src="../assets/js/editar.js"></script>
 </body>
 </html>

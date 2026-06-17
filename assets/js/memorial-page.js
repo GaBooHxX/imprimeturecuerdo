@@ -358,35 +358,6 @@ function setupGlobalAuthUI(){
   });
 }
 
-/* ---------------- UID row ---------------- */
-function setupUidRow(){
-  const row = document.getElementById("uidRow");
-  const myUid = document.getElementById("myUid");
-  const copyBtn = document.getElementById("copyUid");
-  if (!row || !myUid || !copyBtn) return;
-
-  onAuthStateChanged(auth, (user) => {
-    if (!user){
-      row.hidden = true;
-      myUid.textContent = "";
-      return;
-    }
-    row.hidden = false;
-    myUid.textContent = user.uid;
-
-    copyBtn.onclick = async () => {
-      try{
-        await navigator.clipboard.writeText(user.uid);
-        copyBtn.textContent = "¡Copiado!";
-        setTimeout(() => copyBtn.textContent = "Copiar UID", 900);
-      }catch(e){
-        copyBtn.textContent = "No se pudo copiar";
-        setTimeout(() => copyBtn.textContent = "Copiar UID", 1200);
-      }
-    };
-  });
-}
-
 /* ---------------- Mostrar MOD/ADMIN + rol ---------------- */
 function setupModeratorEntry(){
   const memorialId = getMemorialId();
@@ -1358,7 +1329,6 @@ async function loadMemorial(){
 
   await initAuthPersistence();
   setupGlobalAuthUI();
-  setupUidRow();
   setupModeratorEntry();
   setupShare();
 

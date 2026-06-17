@@ -73,10 +73,6 @@ const modRefresh = document.getElementById("modRefresh");
 const modShowHidden = document.getElementById("modShowHidden");
 const modList = document.getElementById("modList");
 
-const uidRow = document.getElementById("uidRow");
-const myUid = document.getElementById("myUid");
-const copyUid = document.getElementById("copyUid");
-
 const promoteUid = document.getElementById("promoteUid");
 const btnMakeMod = document.getElementById("btnMakeMod");
 const btnRemoveMod = document.getElementById("btnRemoveMod");
@@ -249,22 +245,6 @@ function paintRole(){
 
 /* UI hooks */
 function setupUIHooks(memorialId){
-  // UID row
-  onAuthStateChanged(auth, (user) => {
-    if (uidRow && myUid && copyUid){
-      if (user){
-        uidRow.hidden = false;
-        myUid.textContent = user.uid;
-        copyUid.onclick = async () => {
-          await navigator.clipboard.writeText(user.uid);
-          copyUid.textContent = "Copiado ✅";
-          setTimeout(() => copyUid.textContent = "Copiar UID", 1200);
-        };
-      } else {
-        uidRow.hidden = true;
-      }
-    }
-  });
 
   // modal open/close
   btnOpenMod?.addEventListener("click", async () => {
