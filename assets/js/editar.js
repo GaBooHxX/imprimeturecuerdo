@@ -110,11 +110,17 @@ function publicMemorialUrl(id){
 function showError(msg){
   if (!msg){ errorBox.hidden = true; errorBox.textContent = ""; return; }
   errorBox.hidden = false; errorBox.textContent = msg;
+  setTimeout(() => { errorBox.hidden = true; }, 5000);
 }
 function showOk(msg){
-  if (!msg){ okBox.hidden = true; okBox.textContent = ""; return; }
-  okBox.hidden = false; okBox.textContent = msg;
-  setTimeout(() => { okBox.hidden = true; }, 3000);
+  // Crea siempre un elemento nuevo → animación garantizada
+  document.querySelectorAll(".toastOk").forEach(el => el.remove());
+  if (!msg) return;
+  const t = document.createElement("div");
+  t.className = "ok toastOk";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
 }
 
 async function withSaveUI(btn, fn){

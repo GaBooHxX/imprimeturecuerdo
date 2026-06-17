@@ -5,25 +5,27 @@ h2{ font-family:"Cormorant Garamond", Georgia, serif; font-weight:600; font-size
 
 .ok{
   position: fixed;
-  bottom: 24px;
-  right: 20px;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 9999;
-  padding: 13px 20px;
-  border-radius: 14px;
-  border: 1px solid rgba(100,200,130,.35);
-  background: rgba(8, 22, 12, .96);
-  color: #b8efc0;
-  font-weight: 600;
-  font-size: 14px;
-  backdrop-filter: blur(14px);
-  box-shadow: 0 8px 40px rgba(0,0,0,.60);
-  animation: toastIn .22s ease;
-  max-width: 320px;
+  padding: 14px 24px;
+  border-radius: 40px;
+  border: 1px solid rgba(100,210,130,.40);
+  background: rgba(8, 26, 14, .97);
+  color: #a8f0b8;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: .2px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 50px rgba(0,0,0,.70), 0 0 0 1px rgba(100,210,130,.15);
+  animation: toastIn .25s cubic-bezier(.22,1,.36,1);
+  white-space: nowrap;
   pointer-events: none;
 }
 @keyframes toastIn{
-  from{ transform: translateY(14px); opacity: 0; }
-  to  { transform: translateY(0);    opacity: 1; }
+  from{ transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to  { transform: translateX(-50%) translateY(0);    opacity: 1; }
 }
 
 .lbl{
