@@ -301,7 +301,7 @@ async function loadMemorial(){
   if (isAdmin){ await loadAll(); renderQR(); }
 }
 
-/* Carga todos los memoriales de Firestore y llena el <select> */
+/* Carga todos los memoriales de Firestore y llena el <select> con displayName si existe */
 async function loadMemorialsList(){
   if (!memorialIdSelect) return;
   try{
@@ -309,9 +309,17 @@ async function loadMemorialsList(){
     const ids = snap.docs.map(d => d.id).sort((a, b) => a.localeCompare(b));
     if (!ids.includes("Camilo-Fuentes")) ids.unshift("Camilo-Fuentes");
 
+    // Cargar displayName de cada memorial en paralelo
+    const labels = await Promise.all(ids.map(async (id) => {
+      try{
+        const s = await getDoc(doc(db, "memorials", id, "meta", "settings"));
+        return (s.exists() && s.data().displayName) ? s.data().displayName : id;
+      }catch(_){ return id; }
+    }));
+
     memorialIdSelect.innerHTML =
       `<option value="">— Selecciona un memorial —</option>` +
-      ids.map(id => `<option value="${escAttr(id)}">${escAttr(id)}</option>`).join("");
+      ids.map((id, i) => `<option value="${escAttr(id)}">${escAttr(labels[i])}</option>`).join("");
 
     if (memorialId) memorialIdSelect.value = memorialId;
   }catch(_){
@@ -324,10 +332,70 @@ async function loadAll(){
   if (!cloudinaryReady()){
     showError("⚠️ Falta configurar Cloudinary en assets/js/firebase-config.js (cloudName y uploadPreset). Las subidas no funcionarán hasta completarlo. Mira LEEME-CONFIGURACION.md.");
   }
+  await loadSettings();
   await loadTextsAndMeta();
   await loadGallery();
   if (isOwner) await loadEditors();
 }
+
+/* ---------- Configuración del memorial (displayName + isActive) ---------- */
+async function loadSettings(){
+  const fDisplayName = document.getElementById("fDisplayName");
+  const chkActive    = document.getElementById("chkActive");
+  const warn         = document.getElementById("inactiveWarning");
+  const label        = document.getElementById("activeLabel");
+
+  // La sección solo es visible para owners
+  const card = document.getElementById("settingsCard");
+  if (card) card.hidden = !isOwner;
+
+  if (!fDisplayName || !chkActive) return;
+
+  try{
+    const snap = await getDoc(settingsDoc());
+    const data = snap.exists() ? snap.data() : {};
+    fDisplayName.value = data.displayName || "";
+    const active = data.isActive !== false; // default: activo
+    chkActive.checked = active;
+    if (warn)  warn.hidden = active;
+    if (label) label.textContent = active ? "Memorial activo" : "Memorial desactivado";
+  }catch(_){
+    fDisplayName.value = "";
+    chkActive.checked = true;
+  }
+
+  if (!chkActive.dataset.listenerBound){
+    chkActive.dataset.listenerBound = "1";
+    chkActive.addEventListener("change", () => {
+      const active = chkActive.checked;
+      if (warn)  warn.hidden = active;
+      if (label) label.textContent = active ? "Memorial activo" : "Memorial desactivado";
+    });
+  }
+}
+
+document.getElementById("btnSaveSettings")?.addEventListener("click", async () => {
+  if (!isOwner){ showError("Solo el owner puede cambiar la configuración."); return; }
+  const btn          = document.getElementById("btnSaveSettings");
+  const fDisplayName = document.getElementById("fDisplayName");
+  const chkActive    = document.getElementById("chkActive");
+  if (!btn || !fDisplayName || !chkActive) return;
+
+  const displayName = fDisplayName.value.trim();
+  const isActive    = chkActive.checked;
+
+  try{
+    await withSaveUI(btn, () =>
+      setDoc(settingsDoc(), { displayName, isActive, updatedAt: serverTimestamp() }, { merge: true })
+    );
+    // Actualizar la opción en el combo
+    if (memorialIdSelect){
+      const opt = memorialIdSelect.querySelector(`option[value="${CSS.escape(memorialId)}"]`);
+      if (opt) opt.textContent = displayName || memorialId;
+    }
+    showOk("Configuración guardada ✅");
+  }catch(e){ showError("No se pudo guardar: " + (e?.code || e)); }
+});
 
 /* ---------- textos + meta ---------- */
 async function loadTextsAndMeta(){

@@ -44,6 +44,33 @@
   <!-- ====== Todo lo editable (solo si eres admin) ====== -->
   <div id="editor" hidden>
 
+    <!-- Configuración del memorial -->
+    <section class="card ownerOnly" id="settingsCard" hidden>
+      <h2>⚙️ Configuración del memorial</h2>
+
+      <label class="lbl">Nombre para el menú (aparece en el combo y en la pestaña del navegador)</label>
+      <input id="fDisplayName" class="input wide" placeholder="Ej: Camilo Fuentes García" />
+
+      <div class="toggleRow" style="margin-top:18px">
+        <div>
+          <strong id="activeLabel">Memorial activo</strong>
+          <p class="muted" style="margin:2px 0 0">Cuando está inactivo, los visitantes ven un mensaje de "no disponible".</p>
+        </div>
+        <label class="toggle" aria-label="Activar o desactivar el memorial">
+          <input type="checkbox" id="chkActive" checked>
+          <span class="toggleTrack"></span>
+        </label>
+      </div>
+
+      <div id="inactiveWarning" class="inactiveWarn" hidden>
+        ⚠️ Este memorial está <strong>desactivado</strong>. Los visitantes verán una pantalla de bloqueo.
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button id="btnSaveSettings" class="btn primary ownerOnly" type="button">Guardar configuración</button>
+      </div>
+    </section>
+
     <!-- Textos -->
     <section class="card">
       <h2>📝 Textos del memorial</h2>

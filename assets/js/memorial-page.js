@@ -1347,6 +1347,24 @@ async function loadMemorial(){
   await bumpVisit(memorialId);
   setupStatsLive(memorialId);
 
+  // Verificar si el memorial está activo
+  try{
+    const settingsSnap = await getDoc(doc(db, "memorials", memorialId, "meta", "settings"));
+    if (settingsSnap.exists() && settingsSnap.data().isActive === false){
+      hideLoader();
+      document.body.innerHTML = `
+        <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+          background:#0d0d18;color:#eef1f7;font-family:Inter,sans-serif;text-align:center;padding:40px 20px;gap:16px">
+          <div style="font-size:48px">🕯️</div>
+          <h1 style="font-size:22px;font-weight:600;margin:0">Memorial no disponible</h1>
+          <p style="color:rgba(238,241,247,.55);max-width:340px;margin:0;line-height:1.6">
+            Este memorial no está disponible en este momento.<br>Vuelve más tarde.
+          </p>
+        </div>`;
+      return;
+    }
+  }catch(_){}
+
   // data.json es OPCIONAL: la página genérica (/memorial/?m=ID) toma todo de la nube.
   const d = await loadBaseData(memorialId);
 

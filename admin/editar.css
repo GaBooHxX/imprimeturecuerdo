@@ -187,6 +187,52 @@ textarea.input{ resize:vertical; line-height:1.5; font-family:inherit; }
 }
 .btnViewLive:hover{ background: rgba(214,178,107,.22); }
 
+/* Toggle activo/inactivo */
+.toggleRow{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.toggle{ position: relative; display: inline-block; width: 48px; height: 26px; flex: 0 0 48px; }
+.toggle input{ opacity: 0; width: 0; height: 0; }
+.toggleTrack{
+  position: absolute; inset: 0;
+  border-radius: 999px;
+  background: rgba(255,107,107,.35);
+  border: 1px solid rgba(255,107,107,.40);
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.toggleTrack::after{
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .2s;
+}
+.toggle input:checked + .toggleTrack{
+  background: rgba(100,210,130,.35);
+  border-color: rgba(100,210,130,.45);
+}
+.toggle input:checked + .toggleTrack::after{
+  transform: translateX(22px);
+}
+
+.inactiveWarn{
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,170,50,.30);
+  background: rgba(255,170,50,.08);
+  color: rgba(255,200,100,.95);
+  font-size: 13px;
+}
+
 /* Select de memoriales */
 .memorialSelect{
   flex: 1;
