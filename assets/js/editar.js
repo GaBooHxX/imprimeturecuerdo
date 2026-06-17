@@ -390,28 +390,100 @@ function qrOnlySvg(m, quiet, unit){
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}mm" height="${total}mm" viewBox="0 0 ${total} ${total}"><rect width="${total}" height="${total}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
 }
 
-// Placa decorada (marco + cruz + QR + nombre/fechas) lista para extruir
+// Placa decorada estilo medallón (marco doble + círculo ornamental + QR + nombre/fechas) lista para extruir
 function buildPlaqueSvg(m, name, dates){
   const W = 90, H = 120, quiet = 2;
   const n = m.length;
-  const S = 56, qx = (W - S) / 2, qy = 26;
-  const cell = S / (n + quiet * 2);
-  let rects = "";
+  const cx = W / 2;       // 45mm — centro horizontal
+  const cy = 51;          // centro del medallón
+  const R1 = 32, R2 = 30; // radio exterior e interior del anillo del medallón
+
+  // QR: cabe dentro del anillo interior (diagonal máx = R2*√2 ≈ 42.4mm → lado ≤ 42mm)
+  const qrSize = 40;
+  const qx = cx - qrSize / 2;
+  const qy = cy - qrSize / 2;
+  const cell = qrSize / (n + quiet * 2);
+
+  let qrRects = "";
   for (let r = 0; r < n; r++)
     for (let c = 0; c < n; c++)
       if (m[r][c]){
         const x = (qx + (c + quiet) * cell).toFixed(2);
         const y = (qy + (r + quiet) * cell).toFixed(2);
-        rects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+        qrRects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
       }
-  const frame = `<path fill-rule="evenodd" d="M9,3 h72 a6,6 0 0 1 6,6 v102 a6,6 0 0 1 -6,6 h-72 a6,6 0 0 1 -6,-6 v-102 a6,6 0 0 1 6,-6 Z M11,7 h68 a4,4 0 0 1 4,4 v98 a4,4 0 0 1 -4,4 h-68 a4,4 0 0 1 -4,-4 v-98 a4,4 0 0 1 4,-4 Z"/>`;
-  const cross = `<rect x="44" y="10" width="2" height="11" rx="0.4"/><rect x="40.5" y="13.5" width="9" height="2" rx="0.4"/>`;
-  const nm = (name || "").trim();
-  const dt = (dates || "").trim();
-  const nameT = nm ? `<text x="45" y="92" text-anchor="middle" font-family="Georgia, serif" font-size="5" font-weight="600">${escTxt(nm)}</text>` : "";
-  const datesT = dt ? `<text x="45" y="100" text-anchor="middle" font-family="Georgia, serif" font-size="3.4">${escTxt(dt)}</text>` : "";
-  const verse = `<text x="45" y="111" text-anchor="middle" font-family="Georgia, serif" font-size="3" font-style="italic">Siempre en nuestro corazón</text>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}"><g fill="#111">${frame}${cross}<g>${rects}</g>${nameT}${datesT}${verse}</g></svg>`;
+
+  // Marco exterior: anillo (evenodd = zona entre los dos rectángulos redondeados)
+  const outerR = `M 9,2 L 81,2 Q 88,2 88,9 L 88,111 Q 88,118 81,118 L 9,118 Q 2,118 2,111 L 2,9 Q 2,2 9,2 Z`;
+  const innerR = `M 10,5 L 80,5 Q 85,5 85,10 L 85,110 Q 85,115 80,115 L 10,115 Q 5,115 5,110 L 5,10 Q 5,5 10,5 Z`;
+  const borderRing = `<path fill-rule="evenodd" fill="#111" d="${outerR} ${innerR}"/>`;
+
+  // Adornos esquina (pequeños rombos dentro del marco, en las 4 esquinas)
+  function diamond(x, y, s){ return `<polygon points="${x},${y-s} ${x+s},${y} ${x},${y+s} ${x-s},${y}" fill="#111"/>`; }
+  const corners =
+    diamond(10.5, 10.5, 2.2) + diamond(79.5, 10.5, 2.2) +
+    diamond(10.5, 109.5, 2.2) + diamond(79.5, 109.5, 2.2);
+
+  // Cruz en la parte superior (entre borde y medallón)
+  const cxCross = cx, cyCross = 13;
+  const cross = `
+    <rect x="${cxCross - 1.3}" y="${cyCross - 5}" width="2.6" height="10" rx="0.6" fill="#111"/>
+    <rect x="${cxCross - 6}" y="${cyCross - 1.3}" width="12" height="2.6" rx="0.6" fill="#111"/>`;
+
+  // Medallón circular: anillo (evenodd = entre el círculo grande y el pequeño)
+  // Círculo SVG completo = dos semiarcos que se cierran
+  const outerC = `M ${cx + R1},${cy} A ${R1},${R1} 0 1 1 ${cx - R1},${cy} A ${R1},${R1} 0 1 1 ${cx + R1},${cy} Z`;
+  const innerC = `M ${cx + R2},${cy} A ${R2},${R2} 0 1 0 ${cx - R2},${cy} A ${R2},${R2} 0 1 0 ${cx + R2},${cy} Z`;
+  const medalRing = `<path fill-rule="evenodd" fill="#111" d="${outerC} ${innerC}"/>`;
+
+  // Puntos cardinales (N/E/S/W) del medallón
+  const dotR = 2.2, dotD = R1 + 4;
+  const cardDots = [
+    `<circle cx="${cx}" cy="${(cy - dotD).toFixed(1)}" r="${dotR}" fill="#111"/>`,
+    `<circle cx="${(cx + dotD).toFixed(1)}" cy="${cy}" r="${dotR}" fill="#111"/>`,
+    `<circle cx="${cx}" cy="${(cy + dotD).toFixed(1)}" r="${dotR}" fill="#111"/>`,
+    `<circle cx="${(cx - dotD).toFixed(1)}" cy="${cy}" r="${dotR}" fill="#111"/>`,
+  ].join("");
+
+  // Rombos diagonales (NE/SE/SW/NW) del medallón
+  const d45 = (R1 + 4) * 0.707;
+  const diagDiamonds =
+    diamond(+(cx + d45).toFixed(1), +(cy - d45).toFixed(1), 1.5) +
+    diamond(+(cx + d45).toFixed(1), +(cy + d45).toFixed(1), 1.5) +
+    diamond(+(cx - d45).toFixed(1), +(cy + d45).toFixed(1), 1.5) +
+    diamond(+(cx - d45).toFixed(1), +(cy - d45).toFixed(1), 1.5);
+
+  // Separador decorativo (línea + puntos) bajo el medallón
+  const divY = (cy + dotD + 4).toFixed(1);
+  const divider = `
+    <line x1="${cx - 21}" y1="${divY}" x2="${cx + 21}" y2="${divY}" stroke="#111" stroke-width="0.7"/>
+    <circle cx="${cx - 23}" cy="${divY}" r="1.2" fill="#111"/>
+    <circle cx="${cx + 23}" cy="${divY}" r="1.2" fill="#111"/>`;
+
+  // Textos
+  const nm = escTxt((name || "").trim());
+  const dt = escTxt((dates || "").trim());
+  const ty1 = (cy + dotD + 14).toFixed(1);
+  const ty2 = (cy + dotD + 21.5).toFixed(1);
+  const ty3 = (cy + dotD + 29).toFixed(1);
+  const nameEl  = nm ? `<text x="${cx}" y="${ty1}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="5.5" font-weight="700" fill="#111">${nm}</text>` : "";
+  const datesEl = dt ? `<text x="${cx}" y="${ty2}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="3.4" fill="#111">${dt}</text>` : "";
+  const verseEl = `<text x="${cx}" y="${ty3}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="2.9" font-style="italic" fill="#111">Siempre en nuestro corazón</text>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#fff"/>
+  ${borderRing}
+  ${corners}
+  ${cross}
+  ${medalRing}
+  ${cardDots}
+  ${diagDiamonds}
+  <g fill="#111">${qrRects}</g>
+  ${divider}
+  ${nameEl}
+  ${datesEl}
+  ${verseEl}
+</svg>`;
 }
 
 function renderQR(){
