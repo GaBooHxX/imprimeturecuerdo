@@ -252,36 +252,102 @@ textarea.input{ resize:vertical; line-height:1.5; font-family:inherit; }
 }
 
 /* Gestión de editores */
-.editorAddRow{
+.sectionHead{ display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.editorForm{
   display: flex;
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  margin-top: 14px;
+  margin-top: 16px;
 }
-.editorList{ display: flex; flex-direction: column; gap: 8px; }
-.editorItem{
+.editorForm .input{ flex: 1; min-width: 220px; }
+
+.editorFeedback{
+  min-height: 18px;
+  font-size: 13px;
+  margin: 6px 0 0;
+  transition: color .15s;
+}
+.editorFeedback--err{ color: #ff9090; }
+.editorFeedback--ok { color: rgba(100,210,130,.95); }
+
+.editorTable{
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.editorTHead{
   display: flex;
   justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(255,255,255,.03);
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--muted);
+}
+.editorRow{
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  transition: background .15s;
+}
+.editorRow:last-child{ border-bottom: none; }
+.editorRow:hover{ background: rgba(255,255,255,.025); }
+
+.editorRowLeft{ display: flex; align-items: center; gap: 10px; min-width: 0; }
+.editorRowRight{ display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.editorAvatar{
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: rgba(100,180,255,.18);
+  border: 1px solid rgba(100,180,255,.30);
+  color: #8dcfff;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
 .editorEmail{
   font-size: 14px;
-  color: rgba(238,241,247,.88);
+  color: rgba(238,241,247,.90);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.editorNote{
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(100,180,255,.20);
-  background: rgba(100,180,255,.05);
-  color: rgba(238,241,247,.80);
+.editorBadge{
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(100,180,255,.30);
+  background: rgba(100,180,255,.10);
+  color: #8dcfff;
+}
+.editorRemoveBtn{
+  font-size: 12px;
+  padding: 5px 10px;
+  border-color: rgba(255,107,107,.30);
+  background: rgba(255,107,107,.07);
+  color: #ffd2d2;
+}
+.editorRemoveBtn:hover{ background: rgba(255,107,107,.16); }
+
+.editorEmpty{
+  padding: 24px 14px;
+  text-align: center;
+  color: var(--muted);
   font-size: 13px;
-  line-height: 1.55;
 }
-.editorNote strong{ color: rgba(100,180,255,.95); }
 
 /* Código QR */
 .qrBox{

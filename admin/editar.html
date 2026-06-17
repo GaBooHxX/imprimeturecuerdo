@@ -166,8 +166,8 @@
       <audio id="homagePreview" controls style="width:100%; margin-top:12px" hidden></audio>
     </section>
 
-    <!-- Código QR -->
-    <section class="card">
+    <!-- Código QR (solo owner) -->
+    <section class="card ownerOnly" id="qrSection" hidden>
       <h2>📱 Código QR del memorial</h2>
       <p class="muted">Al escanearlo con el celular, lleva directo a este memorial.</p>
       <div id="qrBox" class="qrBox"></div>
@@ -183,19 +183,27 @@
 
     <!-- Gestión de editores (solo owner) -->
     <section class="card ownerOnly" id="editorMgmt" hidden>
-      <h2>👥 Gestión de editores</h2>
-      <p class="muted">Los editores pueden modificar el contenido de este memorial (textos, fotos, audio, video, línea de tiempo) pero <strong>no pueden crear nuevos memoriales</strong> ni gestionar usuarios.</p>
-
-      <div class="editorAddRow">
-        <input id="editorEmail" class="input" type="email" placeholder="correo@ejemplo.com" style="flex:1; min-width:200px"/>
-        <button id="btnAddEditor" class="btn primary" type="button">➕ Agregar editor</button>
+      <div class="sectionHead">
+        <div>
+          <h2>👥 Usuarios del memorial</h2>
+          <p class="muted">Los editores pueden modificar textos, fotos, audio, video y línea de tiempo. No pueden crear memoriales ni gestionar usuarios.</p>
+        </div>
       </div>
-      <p id="editorMsg" class="muted" style="margin-top:6px; min-height:18px"></p>
 
-      <div id="editorList" class="editorList" style="margin-top:12px"></div>
+      <!-- Formulario agregar -->
+      <div class="editorForm">
+        <input id="editorEmail" class="input" type="email" placeholder="correo@ejemplo.com"/>
+        <button id="btnAddEditor" class="btn primary" type="button">➕ Agregar</button>
+      </div>
+      <p id="editorMsg" class="editorFeedback"></p>
 
-      <div class="editorNote">
-        <strong>¿Cómo funciona?</strong> El editor debe iniciar sesión en este panel con el correo que ingresaste. A partir de ese momento tendrá acceso a editar este memorial.
+      <!-- Tabla de editores -->
+      <div class="editorTable">
+        <div class="editorTHead">
+          <span>Correo electrónico</span>
+          <span>Acceso</span>
+        </div>
+        <div id="editorList"></div>
       </div>
     </section>
 

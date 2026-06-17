@@ -1071,22 +1071,29 @@ async function getEditorEmails(){
 
 async function loadEditors(){
   const list = document.getElementById("editorList");
-  const msg  = document.getElementById("editorMsg");
   if (!list) return;
 
-  list.innerHTML = `<div class="muted">Cargando…</div>`;
+  list.innerHTML = `<div class="editorEmpty muted">Cargando…</div>`;
   const emails = await getEditorEmails();
-  if (msg) msg.textContent = "";
 
   if (!emails.length){
-    list.innerHTML = `<div class="muted">Sin editores asignados. Agrega uno arriba.</div>`;
+    list.innerHTML = `
+      <div class="editorEmpty">
+        <span>Sin editores asignados para este memorial.</span>
+      </div>`;
     return;
   }
 
   list.innerHTML = emails.map(email => `
-    <div class="item editorItem">
-      <span class="editorEmail">📧 ${escAttr(email)}</span>
-      <button class="mini danger" data-act="removeEditor" data-email="${escAttr(email)}">Quitar acceso</button>
+    <div class="editorRow">
+      <div class="editorRowLeft">
+        <span class="editorAvatar">${escAttr(email[0].toUpperCase())}</span>
+        <span class="editorEmail">${escAttr(email)}</span>
+      </div>
+      <div class="editorRowRight">
+        <span class="editorBadge">Editor</span>
+        <button class="btn ghost editorRemoveBtn" data-act="removeEditor" data-email="${escAttr(email)}" title="Quitar acceso">✕ Quitar</button>
+      </div>
     </div>
   `).join("");
 }
@@ -1097,22 +1104,28 @@ document.getElementById("btnAddEditor")?.addEventListener("click", async () => {
   const msg   = document.getElementById("editorMsg");
   const email = (input?.value || "").trim().toLowerCase();
 
-  if (!email || !email.includes("@")){ if (msg) msg.textContent = "Ingresa un email válido."; return; }
+  const setMsg = (txt, isErr) => {
+    if (!msg) return;
+    msg.textContent = txt;
+    msg.className = "editorFeedback" + (isErr ? " editorFeedback--err" : " editorFeedback--ok");
+  };
 
-  if (msg) msg.textContent = "Guardando…";
+  if (!email || !email.includes("@")){ setMsg("Ingresa un email válido.", true); return; }
+
+  setMsg("Guardando…", false);
   try{
     const emails = await getEditorEmails();
     if (emails.map(e => e.toLowerCase()).includes(email)){
-      if (msg) msg.textContent = "Ese correo ya es editor de este memorial.";
+      setMsg("Ese correo ya tiene acceso a este memorial.", true);
       return;
     }
     await setDoc(settingsDoc(), { editorEmails: [...emails, email], updatedAt: serverTimestamp() }, { merge: true });
     if (input) input.value = "";
-    if (msg) msg.textContent = "";
+    setMsg("", false);
     await loadEditors();
-    showOk(`Editor agregado: ${email} ✅`);
+    showOk(`✅ ${email} ahora es editor de este memorial`);
   }catch(e){
-    if (msg) msg.textContent = "Error: " + (e?.code || e);
+    setMsg("Error al guardar: " + (e?.code || e), true);
   }
 });
 

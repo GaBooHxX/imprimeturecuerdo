@@ -1,18 +1,11 @@
 rules_version = '2';
 
-// Reglas de seguridad de Firestore para "Imprime tu Recuerdo".
-// Lectura pública del memorial; escritura de contenido SOLO para administradores.
-// Cómo aplicarlas: Firebase Console -> Firestore Database -> pestaña "Reglas" ->
-// pega TODO esto -> "Publicar". (Reemplaza las reglas actuales.)
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() {
       return request.auth != null;
     }
-    // Dueños por correo de Google. Para sumar a otro administrador,
-    // agrega su correo a esta lista (debe coincidir con assets/js/firebase-config.js).
     function isOwner() {
       return signedIn() &&
         request.auth.token.email in [
@@ -32,10 +25,18 @@ service cloud.firestore {
       return signedIn() &&
         exists(/databases/$(database)/documents/memorials/$(mid)/mods/$(request.auth.uid));
     }
+    // Editor: email del usuario está en la lista editorEmails del memorial
+    function isEditor(mid) {
+      return signedIn() &&
+        request.auth.token.email != null &&
+        get(/databases/$(database)/documents/memorials/$(mid)/meta/settings)
+          .data.get('editorEmails', [])
+          .hasAny([request.auth.token.email.lower()]);
+    }
     function canManage(mid) { return isOwner() || isGlobalAdmin() || isMemorialAdmin(mid); }
+    function canEdit(mid)   { return canManage(mid) || isEditor(mid); }
     function canModerate(mid) { return canManage(mid) || isMod(mid); }
 
-    // Administradores globales (se asignan a mano desde la consola)
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow write: if false;
@@ -44,41 +45,46 @@ service cloud.firestore {
     match /memorials/{mid} {
       allow read: if true;
 
-      // Admin del memorial (el dueño puede agregarlos/quitarlos desde el panel)
       match /admin/{uid} {
         allow read: if signedIn() && (request.auth.uid == uid || canManage(mid));
         allow write: if isOwner() || isGlobalAdmin();
       }
 
-      // Moderadores (los asigna un admin desde el panel)
       match /mods/{uid} {
         allow read: if signedIn() && (request.auth.uid == uid || canModerate(mid));
         allow write: if canManage(mid);
       }
 
-      // Textos editables y galería: cualquiera puede leer, solo admin escribe
-      match /meta/content {
-        allow read: if true;
-        allow write: if canManage(mid);
-      }
-      match /gallery/{photoKey} {
-        allow read: if true;
+      // Configuración del memorial (displayName, isActive, editorEmails)
+      // Cualquier usuario firmado puede leer (necesario para que el editor verifique su acceso)
+      // Solo owners/admins pueden escribir
+      match /meta/settings {
+        allow read: if signedIn();
         allow write: if canManage(mid);
       }
 
-      // Estadísticas / visitas: lectura pública; las visitas suman desde cualquier visitante
+      // Contenido editable: owners/admins/editores pueden escribir
+      match /meta/content {
+        allow read: if true;
+        allow write: if canEdit(mid);
+      }
+
+      // Galería: owners/admins/editores pueden escribir
+      match /gallery/{photoKey} {
+        allow read: if true;
+        allow write: if canEdit(mid);
+      }
+
       match /meta/stats {
         allow read: if true;
         allow write: if true;
       }
 
-      // Velas virtuales: una por usuario conectado
       match /candles/{uid} {
         allow read: if true;
         allow create, update, delete: if signedIn() && request.auth.uid == uid;
       }
 
-      // Comentarios por foto
       match /photos/{pid}/comments/{cid} {
         allow read: if true;
         allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
@@ -87,13 +93,11 @@ service cloud.firestore {
         allow delete: if canModerate(mid);
       }
 
-      // Reacciones por foto: una por usuario conectado
       match /photos/{pid}/reactions/{uid} {
         allow read: if true;
         allow write: if signedIn() && request.auth.uid == uid;
       }
 
-      // Libro de condolencias (muro general de mensajes)
       match /guestbook/{gid} {
         allow read: if true;
         allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
