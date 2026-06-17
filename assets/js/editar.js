@@ -96,6 +96,7 @@ const qrBox = $("qrBox");
 const btnDownloadQR = $("btnDownloadQR");
 const btnDownloadQRSVG = $("btnDownloadQRSVG");
 const btnDownloadPlaque = $("btnDownloadPlaque");
+const btnDownloadPlaque3D = $("btnDownloadPlaque3D");
 const qrUrl = $("qrUrl");
 
 const SITE_BASE = "https://gaboohxx.github.io/imprimeturecuerdo";
@@ -483,6 +484,67 @@ function buildPlaqueSvg(m, name, dates){
 </svg>`;
 }
 
+// Versión 3D para Tinkercad: solo formas con fill (sin stroke-only, sin texto)
+function buildPlaqueSvg3D(m){
+  const W = 90, H = 120, quiet = 2;
+  const n = m.length;
+  const cx = W / 2;
+  const cy = 46, circR = 26;
+  const qrSize = 36;
+  const qx = cx - qrSize / 2;
+  const qy = cy - qrSize / 2;
+  const cell = qrSize / (n + quiet * 2);
+
+  let qrRects = "";
+  for (let r = 0; r < n; r++)
+    for (let c = 0; c < n; c++)
+      if (m[r][c]){
+        const x = (qx + (c + quiet) * cell).toFixed(2);
+        const y = (qy + (r + quiet) * cell).toFixed(2);
+        qrRects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
+      }
+
+  // Marco: 4 barras rellenas (Tinkercad no soporta stroke-only)
+  const ft = 1.5;
+  const border3d = `
+    <rect x="3" y="3" width="84" height="${ft}" fill="#000"/>
+    <rect x="3" y="${H - 3 - ft}" width="84" height="${ft}" fill="#000"/>
+    <rect x="3" y="3" width="${ft}" height="114" fill="#000"/>
+    <rect x="${W - 3 - ft}" y="3" width="${ft}" height="114" fill="#000"/>`;
+
+  // Cruz religiosa (rects rellenos)
+  const cTop = 9, cH = 13, cW = 8.5, cT = 1.5, cBarY = cTop + cH * 0.32;
+  const cross = `
+    <rect x="${(cx - cT/2).toFixed(2)}" y="${cTop}" width="${cT}" height="${cH}" rx="0.5" fill="#000"/>
+    <rect x="${(cx - cW/2).toFixed(2)}" y="${(cBarY - cT/2).toFixed(2)}" width="${cW}" height="${cT}" rx="0.5" fill="#000"/>`;
+
+  // Anillo circular: path fill-rule evenodd (dos círculos como subpaths)
+  const oR = circR + 2.5;
+  const iR = circR - 2;
+  const ring = `<path fill="#000" fill-rule="evenodd" d="M ${cx} ${cy - oR} A ${oR} ${oR} 0 1 0 ${cx} ${cy + oR} A ${oR} ${oR} 0 1 0 ${cx} ${cy - oR} Z M ${cx} ${cy - iR} A ${iR} ${iR} 0 1 0 ${cx} ${cy + iR} A ${iR} ${iR} 0 1 0 ${cx} ${cy - iR} Z"/>`;
+
+  // 4 puntos cardinales (círculos rellenos)
+  const dOff = circR + 3.8;
+  const dots = `
+    <circle cx="${cx}"                     cy="${(cy - dOff).toFixed(1)}" r="1.3" fill="#000"/>
+    <circle cx="${(cx + dOff).toFixed(1)}" cy="${cy}"                     r="1.3" fill="#000"/>
+    <circle cx="${cx}"                     cy="${(cy + dOff).toFixed(1)}" r="1.3" fill="#000"/>
+    <circle cx="${(cx - dOff).toFixed(1)}" cy="${cy}"                     r="1.3" fill="#000"/>`;
+
+  // Separador: rect fino en lugar de <line>
+  const divY = 102;
+  const divider = `<rect x="${(cx - 20).toFixed(1)}" y="${divY}" width="40" height="0.6" fill="#000"/>`;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">
+  ${border3d}
+  ${cross}
+  ${ring}
+  ${dots}
+  <g fill="#000">${qrRects}</g>
+  ${divider}
+</svg>`;
+}
+
 function renderQR(){
   if (!qrBox || !window.qrcode || !memorialId) return;
   const url = publicMemorialUrl(memorialId);
@@ -525,6 +587,13 @@ btnDownloadPlaque?.addEventListener("click", () => {
   const m = buildQrMatrix(publicMemorialUrl(memorialId));
   const svg = buildPlaqueSvg(m, fName?.value, fDates?.value);
   downloadBlob(svg, "image/svg+xml", `Placa-${memorialId}.svg`);
+});
+
+btnDownloadPlaque3D?.addEventListener("click", () => {
+  if (!window.qrcode || !memorialId){ showError("El QR aún no está listo."); return; }
+  const m = buildQrMatrix(publicMemorialUrl(memorialId));
+  const svg = buildPlaqueSvg3D(m);
+  downloadBlob(svg, "image/svg+xml", `Placa3D-${memorialId}.svg`);
 });
 
 /* ---------- Línea de tiempo ---------- */
