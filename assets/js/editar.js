@@ -390,16 +390,15 @@ function qrOnlySvg(m, quiet, unit){
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${total}mm" height="${total}mm" viewBox="0 0 ${total} ${total}"><rect width="${total}" height="${total}" fill="#fff"/><g fill="#000">${rects}</g></svg>`;
 }
 
-// Placa decorada estilo medallón (marco doble + círculo ornamental + QR + nombre/fechas) lista para extruir
+// Placa memorial limpia: borde doble, cruz religiosa, medallón circular, nombre auto-ajustado
 function buildPlaqueSvg(m, name, dates){
   const W = 90, H = 120, quiet = 2;
   const n = m.length;
-  const cx = W / 2;       // 45mm — centro horizontal
-  const cy = 51;          // centro del medallón
-  const R1 = 32, R2 = 30; // radio exterior e interior del anillo del medallón
+  const cx = W / 2; // 45
 
-  // QR: cabe dentro del anillo interior (diagonal máx = R2*√2 ≈ 42.4mm → lado ≤ 42mm)
-  const qrSize = 40;
+  // Medallón: QR centered at cy=46, circle r=26
+  const cy = 46, circR = 26;
+  const qrSize = 36; // cabe en el círculo: diagonal = 36*√2 ≈ 50.9mm > 2*26 = 52mm ✓
   const qx = cx - qrSize / 2;
   const qy = cy - qrSize / 2;
   const cell = qrSize / (n + quiet * 2);
@@ -413,76 +412,74 @@ function buildPlaqueSvg(m, name, dates){
         qrRects += `<rect x="${x}" y="${y}" width="${cell.toFixed(2)}" height="${cell.toFixed(2)}"/>`;
       }
 
-  // Marco exterior: anillo (evenodd = zona entre los dos rectángulos redondeados)
-  const outerR = `M 9,2 L 81,2 Q 88,2 88,9 L 88,111 Q 88,118 81,118 L 9,118 Q 2,118 2,111 L 2,9 Q 2,2 9,2 Z`;
-  const innerR = `M 10,5 L 80,5 Q 85,5 85,10 L 85,110 Q 85,115 80,115 L 10,115 Q 5,115 5,110 L 5,10 Q 5,5 10,5 Z`;
-  const borderRing = `<path fill-rule="evenodd" fill="#111" d="${outerR} ${innerR}"/>`;
+  // Borde exterior doble (fino y elegante, solo trazo)
+  const border = `
+    <rect x="3.5" y="3.5" width="83" height="113" rx="5.5" ry="5.5" fill="none" stroke="#1a1a1a" stroke-width="1.4"/>
+    <rect x="6"   y="6"   width="78" height="108" rx="3.5" ry="3.5" fill="none" stroke="#1a1a1a" stroke-width="0.35"/>`;
 
-  // Adornos esquina (pequeños rombos dentro del marco, en las 4 esquinas)
-  function diamond(x, y, s){ return `<polygon points="${x},${y-s} ${x+s},${y} ${x},${y+s} ${x-s},${y}" fill="#111"/>`; }
-  const corners =
-    diamond(10.5, 10.5, 2.2) + diamond(79.5, 10.5, 2.2) +
-    diamond(10.5, 109.5, 2.2) + diamond(79.5, 109.5, 2.2);
-
-  // Cruz en la parte superior (entre borde y medallón)
-  const cxCross = cx, cyCross = 13;
+  // Cruz religiosa proporcional (brazo vertical más largo, cruceta a 1/3 desde arriba)
+  const cTop = 9, cH = 13, cW = 8.5, cT = 1.5, cBarY = cTop + cH * 0.32;
   const cross = `
-    <rect x="${cxCross - 1.3}" y="${cyCross - 5}" width="2.6" height="10" rx="0.6" fill="#111"/>
-    <rect x="${cxCross - 6}" y="${cyCross - 1.3}" width="12" height="2.6" rx="0.6" fill="#111"/>`;
+    <rect x="${(cx - cT/2).toFixed(2)}" y="${cTop}" width="${cT}" height="${cH}" rx="0.5" fill="#1a1a1a"/>
+    <rect x="${(cx - cW/2).toFixed(2)}" y="${(cBarY - cT/2).toFixed(2)}" width="${cW}" height="${cT}" rx="0.5" fill="#1a1a1a"/>`;
 
-  // Medallón circular: anillo (evenodd = entre el círculo grande y el pequeño)
-  // Círculo SVG completo = dos semiarcos que se cierran
-  const outerC = `M ${cx + R1},${cy} A ${R1},${R1} 0 1 1 ${cx - R1},${cy} A ${R1},${R1} 0 1 1 ${cx + R1},${cy} Z`;
-  const innerC = `M ${cx + R2},${cy} A ${R2},${R2} 0 1 0 ${cx - R2},${cy} A ${R2},${R2} 0 1 0 ${cx + R2},${cy} Z`;
-  const medalRing = `<path fill-rule="evenodd" fill="#111" d="${outerC} ${innerC}"/>`;
+  // Círculo medallón: anillo fino (doble línea concéntrica)
+  const circle = `
+    <circle cx="${cx}" cy="${cy}" r="${circR + 1.5}" fill="none" stroke="#1a1a1a" stroke-width="0.9"/>
+    <circle cx="${cx}" cy="${cy}" r="${circR - 1.5}" fill="none" stroke="#1a1a1a" stroke-width="0.3"/>`;
 
-  // Puntos cardinales (N/E/S/W) del medallón
-  const dotR = 2.2, dotD = R1 + 4;
-  const cardDots = [
-    `<circle cx="${cx}" cy="${(cy - dotD).toFixed(1)}" r="${dotR}" fill="#111"/>`,
-    `<circle cx="${(cx + dotD).toFixed(1)}" cy="${cy}" r="${dotR}" fill="#111"/>`,
-    `<circle cx="${cx}" cy="${(cy + dotD).toFixed(1)}" r="${dotR}" fill="#111"/>`,
-    `<circle cx="${(cx - dotD).toFixed(1)}" cy="${cy}" r="${dotR}" fill="#111"/>`,
-  ].join("");
+  // 4 puntos cardinales simples (solo N/E/S/W, sin diagonales)
+  const dOff = circR + 3.8;
+  const dots = `
+    <circle cx="${cx}"          cy="${(cy - dOff).toFixed(1)}" r="1.3" fill="#1a1a1a"/>
+    <circle cx="${(cx+dOff).toFixed(1)}" cy="${cy}"          r="1.3" fill="#1a1a1a"/>
+    <circle cx="${cx}"          cy="${(cy + dOff).toFixed(1)}" r="1.3" fill="#1a1a1a"/>
+    <circle cx="${(cx-dOff).toFixed(1)}" cy="${cy}"          r="1.3" fill="#1a1a1a"/>`;
 
-  // Rombos diagonales (NE/SE/SW/NW) del medallón
-  const d45 = (R1 + 4) * 0.707;
-  const diagDiamonds =
-    diamond(+(cx + d45).toFixed(1), +(cy - d45).toFixed(1), 1.5) +
-    diamond(+(cx + d45).toFixed(1), +(cy + d45).toFixed(1), 1.5) +
-    diamond(+(cx - d45).toFixed(1), +(cy + d45).toFixed(1), 1.5) +
-    diamond(+(cx - d45).toFixed(1), +(cy - d45).toFixed(1), 1.5);
+  // Nombre: auto-divide si es muy largo (evita desbordamiento)
+  const nm   = (name  || "").trim();
+  const dt   = (dates || "").trim();
+  const words = nm.split(" ");
+  const tooWide = nm.length * 4.5 * 0.56 > 76; // estimación ancho Georgia
+  let nameLines = [nm];
+  if (tooWide && words.length > 2){
+    const mid = Math.ceil(words.length / 2);
+    nameLines = [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  }
 
-  // Separador decorativo (línea + puntos) bajo el medallón
-  const divY = (cy + dotD + 4).toFixed(1);
-  const divider = `
-    <line x1="${cx - 21}" y1="${divY}" x2="${cx + 21}" y2="${divY}" stroke="#111" stroke-width="0.7"/>
-    <circle cx="${cx - 23}" cy="${divY}" r="1.2" fill="#111"/>
-    <circle cx="${cx + 23}" cy="${divY}" r="1.2" fill="#111"/>`;
+  // Construye los textos de forma acumulativa desde textTop
+  const nameFontSize = 4.5, lineGap = 2;
+  let curY = cy + dOff + 8; // punto de partida bajo el punto S
 
-  // Textos
-  const nm = escTxt((name || "").trim());
-  const dt = escTxt((dates || "").trim());
-  const ty1 = (cy + dotD + 14).toFixed(1);
-  const ty2 = (cy + dotD + 21.5).toFixed(1);
-  const ty3 = (cy + dotD + 29).toFixed(1);
-  const nameEl  = nm ? `<text x="${cx}" y="${ty1}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="5.5" font-weight="700" fill="#111">${nm}</text>` : "";
-  const datesEl = dt ? `<text x="${cx}" y="${ty2}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="3.4" fill="#111">${dt}</text>` : "";
-  const verseEl = `<text x="${cx}" y="${ty3}" text-anchor="middle" font-family="Georgia,'Times New Roman',serif" font-size="2.9" font-style="italic" fill="#111">Siempre en nuestro corazón</text>`;
+  const nameEls = nameLines.map(line => {
+    const el = `<text x="${cx}" y="${curY.toFixed(1)}" text-anchor="middle" font-family="Georgia,serif" font-size="${nameFontSize}" font-weight="600" fill="#1a1a1a">${escTxt(line)}</text>`;
+    curY += nameFontSize + lineGap;
+    return el;
+  }).join("\n  ");
+
+  curY += 1.5; // pequeña pausa antes de las fechas
+  const datesEl = dt
+    ? `<text x="${cx}" y="${curY.toFixed(1)}" text-anchor="middle" font-family="Georgia,serif" font-size="3.1" fill="#1a1a1a">${escTxt(dt)}</text>`
+    : "";
+  if (dt) curY += 3.1 + 2;
+
+  curY += 4; // espacio antes del separador
+  const divider = `<line x1="${(cx-20).toFixed(1)}" y1="${curY.toFixed(1)}" x2="${(cx+20).toFixed(1)}" y2="${curY.toFixed(1)}" stroke="#1a1a1a" stroke-width="0.5"/>`;
+  curY += 6;
+
+  const verse = `<text x="${cx}" y="${curY.toFixed(1)}" text-anchor="middle" font-family="Georgia,serif" font-size="2.8" font-style="italic" fill="#1a1a1a">Siempre en nuestro corazón</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">
   <rect width="${W}" height="${H}" fill="#fff"/>
-  ${borderRing}
-  ${corners}
+  ${border}
   ${cross}
-  ${medalRing}
-  ${cardDots}
-  ${diagDiamonds}
-  <g fill="#111">${qrRects}</g>
-  ${divider}
-  ${nameEl}
+  ${circle}
+  ${dots}
+  <g fill="#1a1a1a">${qrRects}</g>
+  ${nameEls}
   ${datesEl}
-  ${verseEl}
+  ${divider}
+  ${verse}
 </svg>`;
 }
 
