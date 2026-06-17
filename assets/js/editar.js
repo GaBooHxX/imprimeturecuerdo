@@ -39,7 +39,8 @@ await getRedirectResult(auth).catch(() => {});
 
 /* ---------- estado ---------- */
 let memorialId = null;
-let isAdmin = false;
+let isAdmin  = false; // puede editar este memorial (owner o editor)
+let isOwner  = false; // owner: puede crear memoriales y gestionar editores
 let galleryCache = []; // [{key, url, caption, order, ...}]
 let audiosCache = []; // [{url, caption}]
 let timelineCache = []; // [{year, title, text}]
@@ -150,8 +151,9 @@ function previewSrc(url){
 }
 
 /* ---------- rutas Firestore ---------- */
-const contentDoc = () => doc(db, "memorials", memorialId, "meta", "content");
-const galleryCol = () => collection(db, "memorials", memorialId, "gallery");
+const contentDoc  = () => doc(db, "memorials", memorialId, "meta", "content");
+const settingsDoc = () => doc(db, "memorials", memorialId, "meta", "settings");
+const galleryCol  = () => collection(db, "memorials", memorialId, "gallery");
 
 /* ---------- auth ---------- */
 btnLogin?.addEventListener("click", async () => {
@@ -173,18 +175,33 @@ function isOwnerEmail(email){
 }
 
 async function checkAdmin(uid){
-  // Dueño por correo (lo más simple: ni UID ni documentos)
-  if (isOwnerEmail(auth.currentUser?.email)) return true;
+  isOwner = false;
 
-  // O admin global / admin de este memorial (por si agregas a alguien sin tocar la lista)
+  // Owner por email (config)
+  if (isOwnerEmail(auth.currentUser?.email)){ isOwner = true; return true; }
+
+  // Owner por Firestore (admins globales o por memorial)
   try{
     const g = await getDoc(doc(db, "admins", uid));
-    if (g.exists()) return true;
+    if (g.exists()){ isOwner = true; return true; }
   }catch(_){}
   try{
     const a = await getDoc(doc(db, "memorials", memorialId, "admin", uid));
-    if (a.exists()) return true;
+    if (a.exists()){ isOwner = true; return true; }
   }catch(_){}
+
+  // Editor asignado (por email en memorial/meta/settings)
+  if (memorialId){
+    try{
+      const snap = await getDoc(settingsDoc());
+      if (snap.exists()){
+        const editorEmails = (snap.data().editorEmails || []).map(e => String(e).toLowerCase());
+        const userEmail = (auth.currentUser?.email || "").toLowerCase();
+        if (userEmail && editorEmails.includes(userEmail)) return true; // editor, isOwner = false
+      }
+    }catch(_){}
+  }
+
   return false;
 }
 
@@ -211,10 +228,22 @@ onAuthStateChanged(auth, async (user) => {
 
 function applyAdminUI(){
   editor.hidden = !isAdmin;
+
+  // Elementos solo visibles para el owner
+  document.querySelectorAll(".ownerOnly").forEach(el => { el.hidden = !isOwner; });
+
   if (!auth.currentUser) return;
-  roleInfo.textContent = isAdmin
-    ? "✅ Eres administrador de este memorial. Puedes editarlo."
-    : "No tienes permisos de administrador en este memorial. (Pídele al dueño que te agregue, o revisa LEEME-CONFIGURACION.md).";
+
+  if (!isAdmin){
+    roleInfo.textContent = "⛔ Sin permisos para este memorial. Pide al owner que te asigne como editor.";
+    roleInfo.className = "roleNone";
+  } else if (isOwner){
+    roleInfo.textContent = "👑 Owner — acceso completo.";
+    roleInfo.className = "roleOwner";
+  } else {
+    roleInfo.textContent = "✏️ Editor — puedes editar el contenido de este memorial.";
+    roleInfo.className = "roleEditor";
+  }
 }
 
 /* ---------- cargar memorial ---------- */
@@ -233,13 +262,14 @@ function slugify(s){
 const btnNewMemorial = $("btnNewMemorial");
 btnNewMemorial?.addEventListener("click", async () => {
   if (!auth.currentUser){ showError("Inicia sesión primero."); return; }
+  if (!isOwner){ showError("Solo el owner puede crear nuevos memoriales."); return; }
   const name = (window.prompt("Nombre de la persona (ej: María González Pérez):") || "").trim();
   if (!name) return;
   const slug = slugify(name);
   if (!slug){ showError("Ese nombre no genera un identificador válido."); return; }
   memorialIdInput.value = slug;
   await loadMemorial();
-  if (isAdmin && fName){ fName.value = name; } // prellena el nombre para ahorrar pasos
+  if (isAdmin && fName){ fName.value = name; }
   showOk("✨ Memorial nuevo listo. Completa los datos, sube fotos y pulsa Guardar.");
 });
 
@@ -268,6 +298,7 @@ async function loadAll(){
   }
   await loadTextsAndMeta();
   await loadGallery();
+  if (isOwner) await loadEditors();
 }
 
 /* ---------- textos + meta ---------- */
@@ -932,6 +963,77 @@ btnClearHomage?.addEventListener("click", async () => {
   await setDoc(contentDoc(), { homageMusicUrl: "", updatedAt: serverTimestamp() }, { merge: true });
   if (homagePreview) homagePreview.hidden = true;
   showOk("Música quitada");
+});
+
+/* ---------- Gestión de editores (solo owner) ---------- */
+async function getEditorEmails(){
+  try{
+    const snap = await getDoc(settingsDoc());
+    return snap.exists() ? (snap.data().editorEmails || []) : [];
+  }catch(_){ return []; }
+}
+
+async function loadEditors(){
+  const list = document.getElementById("editorList");
+  const msg  = document.getElementById("editorMsg");
+  if (!list) return;
+
+  list.innerHTML = `<div class="muted">Cargando…</div>`;
+  const emails = await getEditorEmails();
+  if (msg) msg.textContent = "";
+
+  if (!emails.length){
+    list.innerHTML = `<div class="muted">Sin editores asignados. Agrega uno arriba.</div>`;
+    return;
+  }
+
+  list.innerHTML = emails.map(email => `
+    <div class="item editorItem">
+      <span class="editorEmail">📧 ${escAttr(email)}</span>
+      <button class="small danger" data-act="removeEditor" data-email="${escAttr(email)}">Quitar acceso</button>
+    </div>
+  `).join("");
+}
+
+document.getElementById("btnAddEditor")?.addEventListener("click", async () => {
+  if (!isOwner){ showError("Solo el owner puede gestionar editores."); return; }
+  const input = document.getElementById("editorEmail");
+  const msg   = document.getElementById("editorMsg");
+  const email = (input?.value || "").trim().toLowerCase();
+
+  if (!email || !email.includes("@")){ if (msg) msg.textContent = "Ingresa un email válido."; return; }
+
+  if (msg) msg.textContent = "Guardando…";
+  try{
+    const emails = await getEditorEmails();
+    if (emails.map(e => e.toLowerCase()).includes(email)){
+      if (msg) msg.textContent = "Ese correo ya es editor de este memorial.";
+      return;
+    }
+    await setDoc(settingsDoc(), { editorEmails: [...emails, email], updatedAt: serverTimestamp() }, { merge: true });
+    if (input) input.value = "";
+    if (msg) msg.textContent = "";
+    await loadEditors();
+    showOk(`Editor agregado: ${email} ✅`);
+  }catch(e){
+    if (msg) msg.textContent = "Error: " + (e?.code || e);
+  }
+});
+
+document.getElementById("editorList")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act='removeEditor']");
+  if (!btn || !isOwner) return;
+  const email = btn.dataset.email;
+  if (!email) return;
+  try{
+    const emails = await getEditorEmails();
+    await setDoc(settingsDoc(), {
+      editorEmails: emails.filter(x => x.toLowerCase() !== email.toLowerCase()),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await loadEditors();
+    showOk(`Acceso revocado: ${email} ✅`);
+  }catch(e){ showError("No se pudo quitar: " + (e?.code || e)); }
 });
 
 /* ---------- util ---------- */

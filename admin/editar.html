@@ -24,7 +24,7 @@
     </div>
   </header>
 
-  <p id="roleInfo" class="muted">Cargando permisos…</p>
+  <p id="roleInfo" class="roleBadge muted">Cargando permisos…</p>
   <p id="errorBox" class="error" hidden></p>
   <div id="okBox" class="ok" hidden></div>
 
@@ -34,14 +34,13 @@
     <div class="row">
       <input id="memorialIdInput" class="input" placeholder="Camilo-Fuentes" value="Camilo-Fuentes" />
       <button id="btnLoadMemorial" class="btn" type="button">Cargar</button>
-      <button id="btnNewMemorial" class="btn primary" type="button">➕ Nuevo memorial</button>
-      <a id="linkView" class="btn ghost" href="#" target="_blank" rel="noopener">Ver memorial ↗</a>
+      <button id="btnNewMemorial" class="btn primary ownerOnly" type="button" hidden>➕ Nuevo memorial</button>
+      <a id="linkView" class="btn btnViewLive" href="#" target="_blank" rel="noopener">👁 Ver memorial en vivo ↗</a>
     </div>
     <div class="muted" style="margin-top:10px">Editando: <strong id="memorialActive">—</strong></div>
-    <p class="muted" style="margin-top:8px">
-      💡 Para crear un <strong>memorial nuevo</strong> (otro familiar), escribe un nombre sin espacios
-      (ej: <code>Tia-Maria</code>), pulsa <strong>Cargar</strong> y empieza a editar. Se publica en
-      <code>/memorial/?m=NOMBRE</code>.
+    <p class="muted ownerOnly" style="margin-top:8px" hidden>
+      💡 Para crear un <strong>memorial nuevo</strong>, escribe un nombre sin espacios
+      (ej: <code>Tia-Maria</code>), pulsa <strong>Cargar</strong> y empieza a editar.
     </p>
   </section>
 
@@ -156,6 +155,24 @@
       </div>
       <p class="muted" id="qrUrl" style="word-break:break-all; margin-top:10px"></p>
       <p class="muted" style="margin-top:6px">💡 Para impresión 3D en PETG: usa <strong>Placa para Tinkercad</strong> — genera un SVG con solo formas rellenas (sin texto, sin strokes) que Tinkercad puede extruir correctamente. La <strong>placa decorada</strong> es para imprimir en papel/vinilo.</p>
+    </section>
+
+    <!-- Gestión de editores (solo owner) -->
+    <section class="card ownerOnly" id="editorMgmt" hidden>
+      <h2>👥 Gestión de editores</h2>
+      <p class="muted">Los editores pueden modificar el contenido de este memorial (textos, fotos, audio, video, línea de tiempo) pero <strong>no pueden crear nuevos memoriales</strong> ni gestionar usuarios.</p>
+
+      <div class="editorAddRow">
+        <input id="editorEmail" class="input" type="email" placeholder="correo@ejemplo.com" style="flex:1; min-width:200px"/>
+        <button id="btnAddEditor" class="btn primary" type="button">➕ Agregar editor</button>
+      </div>
+      <p id="editorMsg" class="muted" style="margin-top:6px; min-height:18px"></p>
+
+      <div id="editorList" class="editorList" style="margin-top:12px"></div>
+
+      <div class="editorNote">
+        <strong>¿Cómo funciona?</strong> El editor debe iniciar sesión en este panel con el correo que ingresaste. A partir de ese momento tendrá acceso a editar este memorial.
+      </div>
     </section>
 
   </div>
