@@ -78,16 +78,14 @@
       <img id="cover" class="mCover" alt="">
     </div>
 
-    <!-- ✅ MENÚ ELEGANTE (sin fondo), debajo de la foto y sticky -->
+    <!-- Menú sticky -->
     <nav class="mNav" aria-label="Secciones del memorial">
       <div class="mNav__row" id="memNav">
         <a class="mNav__btn is-active" href="#inicio">Inicio</a>
-        <a class="mNav__btn" href="#frases">Frases</a>
-        <a class="mNav__btn" href="#timelineSection">Vida</a>
-        <a class="mNav__btn" href="#statsSection">Huella</a>
         <a class="mNav__btn" href="#fotos">Fotos</a>
-        <a class="mNav__btn" href="#videoSection">Video</a>
+        <a class="mNav__btn" href="#timelineSection">Vida</a>
         <a class="mNav__btn" href="#audioSection">Audio</a>
+        <a class="mNav__btn" href="#videoSection">Video</a>
         <a class="mNav__btn" href="#candleSection">Velas</a>
         <a class="mNav__btn" href="#guestbook">Mensajes</a>
       </div>
@@ -98,12 +96,55 @@
     <p id="dates" class="mDates"></p>
     <p id="bio" class="mBio"></p>
 
-    <!-- Login GLOBAL -->
-    <section class="mSection">
-      <h2>Deja tu recuerdo</h2>
-      <p class="meta">Para comentar y reaccionar en las fotografías, debes iniciar sesión con Google.</p>
+    <!-- Contenido emocional dinámico (frases, historia) -->
+    <div id="extraBlocks"></div>
 
-      <div class="authRow">
+    <!-- Galería — lo más importante visualmente -->
+    <section class="mSection" id="fotos">
+      <h2>Fotografías</h2>
+      <button id="btnSlideshow" class="mGhostBtn" type="button" hidden>▶ Modo homenaje</button>
+      <div id="gallery" class="mGallery"></div>
+    </section>
+
+    <!-- Línea de tiempo de su vida -->
+    <section class="mSection" id="timelineSection" hidden>
+      <h2>Su vida</h2>
+      <div class="mTimeline" id="timeline"></div>
+    </section>
+
+    <!-- Huella de cariño (stats) -->
+    <section class="mSection" id="statsSection" hidden>
+      <h2>Huella de cariño</h2>
+      <div class="mDivider"><span>🕯️</span></div>
+      <div class="mStats" id="statsGrid"></div>
+    </section>
+
+    <!-- Audio — voz y música -->
+    <section class="mSection" id="audioSection" hidden>
+      <h2>Audio</h2>
+      <div class="mAudio">
+        <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
+        <p id="audioHint" class="meta" style="margin:8px 0 0">
+          Volumen inicial suave. Puedes ajustar desde los controles.
+        </p>
+        <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
+      </div>
+    </section>
+
+    <!-- Video -->
+    <section class="mSection" id="videoSection" hidden>
+      <h2>Video</h2>
+      <div class="mVideo">
+        <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <!-- Login — antes de las secciones interactivas -->
+    <section class="mSection mLoginSection">
+      <h2>Participa en este memorial</h2>
+      <p class="meta">Inicia sesión con Google para encender una vela, dejar un mensaje y reaccionar en las fotografías.</p>
+
+      <div class="authRow" style="margin-top:14px">
         <div id="authStatus" class="authStatus">Invitado</div>
 
         <button id="btnLoginMain" class="gBtn" type="button">
@@ -116,12 +157,11 @@
         </button>
       </div>
 
-      <p class="meta" id="modRoleText" style="margin-top:6px"></p>
+      <p class="meta" id="modRoleText" style="margin-top:8px"></p>
       <p id="authError" class="authError" hidden></p>
-
     </section>
 
-    <!-- BOTÓN SOLO PARA MOD/ADMIN -->
+    <!-- Herramientas de moderación (solo admin/mod) -->
     <section id="modEntry" class="mSection" hidden>
       <div class="authRow">
         <div class="authStatus">Herramientas</div>
@@ -130,54 +170,10 @@
       <p class="meta">Solo visible para administradores/moderadores de este memorial.</p>
     </section>
 
-    <!-- Contenido emocional dinámico -->
-    <div id="extraBlocks"></div>
-
-    <!-- Línea de tiempo de su vida -->
-    <section class="mSection" id="timelineSection" hidden>
-      <h2>Su vida</h2>
-      <div class="mTimeline" id="timeline"></div>
-    </section>
-
-    <section class="mSection" id="statsSection" hidden>
-      <h2>Huella de cariño</h2>
-      <div class="mDivider"><span>🕯️</span></div>
-      <div class="mStats" id="statsGrid"></div>
-    </section>
-
-    <!-- Galería -->
-    <section class="mSection" id="fotos">
-      <h2>Galería</h2>
-      <button id="btnSlideshow" class="mGhostBtn" type="button" hidden>▶ Modo homenaje</button>
-      <div id="gallery" class="mGallery"></div>
-    </section>
-
-    <!-- Video -->
-    <section class="mSection" id="videoSection" hidden>
-      <h2>Video</h2>
-      <div class="mVideo">
-        <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
-      </div>
-    </section>
-
-    <!-- Audio -->
-    <section class="mSection" id="audioSection" hidden>
-      <h2>Audio</h2>
-
-      <div class="mAudio">
-        <button id="audioToggle" class="mAudioBtn" type="button">▶ Reproducir</button>
-        <p id="audioHint" class="meta" style="margin:8px 0 0">
-          Volumen inicial suave. Puedes ajustar desde los controles.
-        </p>
-
-        <audio id="audioPlayer" controls preload="metadata" style="width:100%; margin-top:10px"></audio>
-      </div>
-    </section>
-
     <!-- Velas -->
     <section class="mSection" id="candleSection" hidden>
       <h2>Velas</h2>
-      <p class="meta">Enciende una vela en su memoria y, si quieres, deja unas palabras. (Inicia sesión con Google.)</p>
+      <p class="meta">Enciende una vela en su memoria y, si quieres, deja unas palabras.</p>
       <textarea id="candleMsg" class="candleMsg" maxlength="200" placeholder="Unas palabras (opcional)…"></textarea>
       <button class="mCandleBtn" type="button" id="candleBtn">🕯️ Encender vela</button>
       <p class="meta" id="candleCount" style="margin-top:10px"></p>
@@ -187,7 +183,7 @@
     <!-- Libro de condolencias -->
     <section class="mSection" id="guestbook">
       <h2>Libro de condolencias</h2>
-      <p class="meta">Deja unas palabras para la familia. Para escribir, inicia sesión con Google más arriba.</p>
+      <p class="meta">Deja unas palabras para la familia.</p>
 
       <div class="gbForm">
         <textarea id="gbText" maxlength="800" placeholder="Escribe aquí tu mensaje de cariño…" disabled></textarea>

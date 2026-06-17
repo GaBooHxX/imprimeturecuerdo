@@ -1097,6 +1097,82 @@ body{
   line-height: 1.45;
 }
 
+/* Botón modo homenaje (slideshow) */
+.mGhostBtn{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(216,184,120,.35);
+  background: rgba(216,184,120,.08);
+  color: rgba(238,241,247,.92);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+.mGhostBtn:hover{ background: rgba(216,184,120,.16); transform: translateY(-1px); }
+.mGhostBtn:active{ transform: translateY(0) scale(.99); }
+
+/* Sección login compacta */
+.mLoginSection{
+  border-color: rgba(216,184,120,.14);
+  background: linear-gradient(180deg, rgba(216,184,120,.06), rgba(216,184,120,.02));
+}
+.mLoginSection > h2::after{
+  background: linear-gradient(90deg, rgba(216,184,120,.6), transparent);
+}
+
+/* Guestbook */
+.gbForm{
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.gbForm textarea{
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.03);
+  color: rgba(238,241,247,.92);
+  border-radius: 14px;
+  padding: 10px 14px;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.gbForm textarea:disabled{ opacity: .5; }
+.gbList{ display: grid; gap: 10px; }
+.gbEntry{
+  border: 1px solid rgba(255,255,255,.09);
+  background: rgba(255,255,255,.025);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.gbEntry strong{ font-size: 14px; }
+.gbEntry p{
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(238,241,247,.88);
+}
+.gbEntry .meta{ margin-top: 8px; font-size: 12px; }
+
+/* Galería — sección más prominente */
+#fotos > h2{
+  font-size: 32px;
+}
+#fotos > h2::after{
+  width: 60px;
+  background: linear-gradient(90deg, var(--gold), rgba(216,184,120,.2), transparent);
+}
+
 /* ---------- Botón "Modo homenaje" ---------- */
 .mGhostBtn{
   margin-bottom: 14px;
