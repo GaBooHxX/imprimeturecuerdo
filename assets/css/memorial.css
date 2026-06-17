@@ -1097,6 +1097,68 @@ body{
   line-height: 1.45;
 }
 
+/* Login en topbar */
+.mTop__actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mTopUser{
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(216,184,120,.95);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(216,184,120,.25);
+  background: rgba(216,184,120,.08);
+  white-space: nowrap;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mTopBtn--login{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: rgba(216,184,120,.35);
+  background: rgba(216,184,120,.10);
+  font-weight: 700;
+}
+.mTopBtn--login:hover{ background: rgba(216,184,120,.18); }
+.gIcon--sm{
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: #fff;
+  position: relative;
+  flex: 0 0 14px;
+}
+.gIcon--sm::after{
+  content: "G";
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-weight: 900; color: #1a73e8; font-size: 9px;
+}
+.mAuthError{
+  margin: 0;
+  padding: 8px 20px;
+  background: rgba(255,80,80,.12);
+  color: rgba(255,220,220,.95);
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255,80,80,.20);
+}
+.mModRole{
+  margin: 0;
+  padding: 6px 20px;
+  font-size: 12px;
+  color: rgba(216,184,120,.85);
+  background: rgba(216,184,120,.06);
+  border-bottom: 1px solid rgba(216,184,120,.12);
+}
+@media (max-width: 520px){
+  .mTopBtn--login span:last-child{ display: none; }
+  .mTopUser{ max-width: 80px; }
+}
+
 /* Botón modo homenaje (slideshow) */
 .mGhostBtn{
   display: inline-flex;

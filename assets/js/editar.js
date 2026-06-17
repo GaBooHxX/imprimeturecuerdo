@@ -114,7 +114,22 @@ function showError(msg){
 function showOk(msg){
   if (!msg){ okBox.hidden = true; okBox.textContent = ""; return; }
   okBox.hidden = false; okBox.textContent = msg;
-  setTimeout(() => { okBox.hidden = true; }, 2600);
+  setTimeout(() => { okBox.hidden = true; }, 3000);
+}
+
+async function withSaveUI(btn, fn){
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+  try{
+    await fn();
+    btn.textContent = "✅ Guardado";
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2200);
+  }catch(e){
+    btn.textContent = orig;
+    btn.disabled = false;
+    throw e;
+  }
 }
 function cloudinaryReady(){
   return cloudinaryConfig
@@ -340,15 +355,15 @@ btnSaveText?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
   const quotes = fQuotes.value.split("\n").map(s => s.trim()).filter(Boolean);
   try{
-    await setDoc(contentDoc(), {
+    await withSaveUI(btnSaveText, () => setDoc(contentDoc(), {
       name: fName.value.trim(),
       dates: fDates.value.trim(),
       bio: fBio.value.trim(),
       history: fHistory.value.trim(),
       quotes,
       updatedAt: serverTimestamp()
-    }, { merge: true });
-    showOk("Textos guardados ✅");
+    }, { merge: true }));
+    showOk("Textos guardados — ya se ven en el memorial ✅");
   }catch(e){ showError("No se pudieron guardar los textos: " + (e?.code || e)); }
 });
 
@@ -645,8 +660,10 @@ btnSaveTL?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
   timelineCache = collectTimeline(false);
   try{
-    await setDoc(contentDoc(), { timeline: timelineCache, updatedAt: serverTimestamp() }, { merge: true });
-    showOk("Línea de tiempo guardada ✅");
+    await withSaveUI(btnSaveTL, () =>
+      setDoc(contentDoc(), { timeline: timelineCache, updatedAt: serverTimestamp() }, { merge: true })
+    );
+    showOk("Línea de tiempo guardada — ya se ve en el memorial ✅");
   }catch(e){ showError("No se pudo guardar la línea de tiempo: " + (e?.code || e)); }
 });
 
@@ -863,8 +880,10 @@ btnSaveVideo?.addEventListener("click", async () => {
   if (!ensureAdmin()) return;
   const videos = fVideo.value.split("\n").map(s => s.trim()).filter(Boolean);
   try{
-    await setDoc(contentDoc(), { videos, videoUrl: "", updatedAt: serverTimestamp() }, { merge: true });
-    showOk(videos.length > 1 ? "Videos guardados ✅" : "Video guardado ✅");
+    await withSaveUI(btnSaveVideo, () =>
+      setDoc(contentDoc(), { videos, videoUrl: "", updatedAt: serverTimestamp() }, { merge: true })
+    );
+    showOk((videos.length > 1 ? "Videos guardados" : "Video guardado") + " — ya se ve en el memorial ✅");
   }catch(e){ showError("No se pudieron guardar los videos: " + (e?.code || e)); }
 });
 btnClearVideo?.addEventListener("click", async () => {

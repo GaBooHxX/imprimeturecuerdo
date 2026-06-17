@@ -350,7 +350,9 @@ function setupGlobalAuthUI(){
 
   onAuthStateChanged(auth, (user) => {
     if (authStatus){
-      authStatus.textContent = user ? `${user.displayName || "Usuario"} (conectado)` : "Invitado";
+      const firstName = user?.displayName?.split(" ")[0] || "Usuario";
+      authStatus.textContent = user ? `✓ ${firstName}` : "";
+      authStatus.hidden = !user;
     }
     if (btnLoginMain) btnLoginMain.hidden = !!user;
     if (btnLogoutMain) btnLogoutMain.hidden = !user;
@@ -381,7 +383,10 @@ function setupModeratorEntry(){
     try{ role = await getRole(memorialId, user.uid); }
     catch(e){ role = "none"; }
 
-    if (roleText) roleText.textContent = `Rol: ${roleLabel(role)}`;
+    if (roleText){
+      roleText.textContent = role !== "none" ? `Rol: ${roleLabel(role)}` : "";
+      roleText.hidden = role === "none";
+    }
 
     const canModerate = (role === "global-admin" || role === "memorial-admin" || role === "mod");
     const canPromote  = (role === "global-admin" || role === "memorial-admin");

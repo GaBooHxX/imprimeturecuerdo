@@ -4,12 +4,26 @@ h1{ font-family:"Cormorant Garamond", Georgia, serif; font-weight:600; font-size
 h2{ font-family:"Cormorant Garamond", Georgia, serif; font-weight:600; font-size:22px; }
 
 .ok{
-  margin:10px 0 0;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid rgba(120,220,150,.35);
-  background:rgba(120,220,150,.12);
-  color:#cdeccf;
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 9999;
+  padding: 13px 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(100,200,130,.35);
+  background: rgba(8, 22, 12, .96);
+  color: #b8efc0;
+  font-weight: 600;
+  font-size: 14px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 40px rgba(0,0,0,.60);
+  animation: toastIn .22s ease;
+  max-width: 320px;
+  pointer-events: none;
+}
+@keyframes toastIn{
+  from{ transform: translateY(14px); opacity: 0; }
+  to  { transform: translateY(0);    opacity: 1; }
 }
 
 .lbl{

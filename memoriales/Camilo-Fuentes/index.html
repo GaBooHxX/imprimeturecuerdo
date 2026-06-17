@@ -63,12 +63,18 @@
 
       <strong>Imprime tu Recuerdo</strong>
 
-      <!-- (3) Compartir -->
-      <button id="btnShare" class="mTopBtn" type="button" title="Compartir memorial" aria-label="Compartir memorial">
-        Compartir
-      </button>
+      <div class="mTop__actions">
+        <span id="authStatus" class="mTopUser" hidden></span>
+        <button id="btnLoginMain" class="mTopBtn mTopBtn--login" type="button" title="Iniciar sesión con Google">
+          <span class="gIcon--sm"></span>Conectar
+        </button>
+        <button id="btnLogoutMain" class="mTopBtn ghost" type="button" hidden>Salir</button>
+        <button id="btnShare" class="mTopBtn" type="button" aria-label="Compartir memorial">Compartir</button>
+      </div>
     </div>
   </header>
+  <p id="authError" class="mAuthError" hidden></p>
+  <p id="modRoleText" class="mModRole" hidden></p>
 
   <main class="mWrap">
 
@@ -137,28 +143,6 @@
       <div class="mVideo">
         <iframe id="videoFrame" allowfullscreen loading="lazy"></iframe>
       </div>
-    </section>
-
-    <!-- Login — antes de las secciones interactivas -->
-    <section class="mSection mLoginSection">
-      <h2>Participa en este memorial</h2>
-      <p class="meta">Inicia sesión con Google para encender una vela, dejar un mensaje y reaccionar en las fotografías.</p>
-
-      <div class="authRow" style="margin-top:14px">
-        <div id="authStatus" class="authStatus">Invitado</div>
-
-        <button id="btnLoginMain" class="gBtn" type="button">
-          <span class="gIcon"></span>
-          <span>Continuar con Google</span>
-        </button>
-
-        <button id="btnLogoutMain" class="gBtn ghost" type="button" hidden>
-          Cerrar sesión
-        </button>
-      </div>
-
-      <p class="meta" id="modRoleText" style="margin-top:8px"></p>
-      <p id="authError" class="authError" hidden></p>
     </section>
 
     <!-- Herramientas de moderación (solo admin/mod) -->
