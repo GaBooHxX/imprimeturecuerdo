@@ -1353,16 +1353,16 @@ async function loadMemorial(){
   // 🔄 Contenido subido desde el panel (sobreescribe data.json cuando existe)
   const { content: dyn, gallery: dynGallery } = await loadDynamicContent(memorialId);
 
-  // Textos
-  if (dyn.name) d.name = dyn.name;
-  if (dyn.dates) d.dates = dyn.dates;
-  if (dyn.bio) d.bio = dyn.bio;
-  if (Array.isArray(dyn.quotes) && dyn.quotes.length) d.quotes = dyn.quotes;
-  if (dyn.history){
+  // Textos — usamos 'in' para que un string vacío también sobreescriba data.json
+  if ("name"    in dyn) d.name = dyn.name;
+  if ("dates"   in dyn) d.dates = dyn.dates;
+  if ("bio"     in dyn) d.bio = dyn.bio;
+  if (Array.isArray(dyn.quotes)) d.quotes = dyn.quotes;
+  if ("history" in dyn){
     d.sections = Array.isArray(d.sections) ? d.sections.slice() : [];
     const idx = d.sections.findIndex(s => String(s.title || "").toLowerCase().includes("historia"));
     if (idx >= 0) d.sections[idx] = { ...d.sections[idx], type: "text", content: dyn.history };
-    else d.sections.unshift({ title: "Historia", type: "text", content: dyn.history });
+    else if (dyn.history) d.sections.unshift({ title: "Historia", type: "text", content: dyn.history });
   }
 
   document.title = (d.name || "Memorial") + " | Imprime tu Recuerdo";

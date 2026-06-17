@@ -55,8 +55,7 @@ const errorBox = $("errorBox");
 const okBox = $("okBox");
 
 const memorialPick = $("memorialPick");
-const memorialIdInput = $("memorialIdInput");
-const btnLoadMemorial = $("btnLoadMemorial");
+const memorialIdSelect = document.getElementById("memorialIdSelect");
 const memorialActive = $("memorialActive");
 const linkView = $("linkView");
 const editor = $("editor");
@@ -217,7 +216,8 @@ onAuthStateChanged(auth, async (user) => {
   authStatus.textContent = `${user.displayName || "Usuario"} (conectado)`;
   btnLogin.hidden = true; btnLogout.hidden = false;
   memorialPick.hidden = false;
-  roleInfo.textContent = "Sesión iniciada. Carga un memorial para editar.";
+  roleInfo.textContent = "Sesión iniciada. Selecciona un memorial para editar.";
+  await loadMemorialsList();
 
   if (memorialId){
     isAdmin = await checkAdmin(user.uid);
@@ -247,8 +247,9 @@ function applyAdminUI(){
 }
 
 /* ---------- cargar memorial ---------- */
-btnLoadMemorial?.addEventListener("click", loadMemorial);
-memorialIdInput?.addEventListener("keydown", (e) => { if (e.key === "Enter") loadMemorial(); });
+memorialIdSelect?.addEventListener("change", () => {
+  if (memorialIdSelect.value) loadMemorial();
+});
 
 function slugify(s){
   return String(s)
@@ -267,18 +268,27 @@ btnNewMemorial?.addEventListener("click", async () => {
   if (!name) return;
   const slug = slugify(name);
   if (!slug){ showError("Ese nombre no genera un identificador válido."); return; }
-  memorialIdInput.value = slug;
+
+  // Agregar al select si no existe y seleccionarlo
+  if (memorialIdSelect){
+    if (!memorialIdSelect.querySelector(`option[value="${CSS.escape(slug)}"]`)){
+      const opt = document.createElement("option");
+      opt.value = slug; opt.textContent = slug;
+      memorialIdSelect.appendChild(opt);
+    }
+    memorialIdSelect.value = slug;
+  }
+
   await loadMemorial();
   if (isAdmin && fName){ fName.value = name; }
   showOk("✨ Memorial nuevo listo. Completa los datos, sube fotos y pulsa Guardar.");
 });
 
 async function loadMemorial(){
-  const v = (memorialIdInput.value || "").trim();
+  const v = (memorialIdSelect?.value || "").trim();
   if (!v) return;
   memorialId = v;
   memorialActive.textContent = v;
-  // Camilo tiene carpeta propia; los memoriales nuevos usan la página genérica.
   linkView.href = (v === "Camilo-Fuentes")
     ? "../memoriales/Camilo-Fuentes/"
     : `../memorial/?m=${encodeURIComponent(v)}`;
@@ -289,6 +299,24 @@ async function loadMemorial(){
   isAdmin = await checkAdmin(user.uid);
   applyAdminUI();
   if (isAdmin){ await loadAll(); renderQR(); }
+}
+
+/* Carga todos los memoriales de Firestore y llena el <select> */
+async function loadMemorialsList(){
+  if (!memorialIdSelect) return;
+  try{
+    const snap = await getDocs(collection(db, "memorials"));
+    const ids = snap.docs.map(d => d.id).sort((a, b) => a.localeCompare(b));
+    if (!ids.includes("Camilo-Fuentes")) ids.unshift("Camilo-Fuentes");
+
+    memorialIdSelect.innerHTML =
+      `<option value="">— Selecciona un memorial —</option>` +
+      ids.map(id => `<option value="${escAttr(id)}">${escAttr(id)}</option>`).join("");
+
+    if (memorialId) memorialIdSelect.value = memorialId;
+  }catch(_){
+    memorialIdSelect.innerHTML = `<option value="Camilo-Fuentes">Camilo-Fuentes</option>`;
+  }
 }
 
 async function loadAll(){
@@ -990,7 +1018,7 @@ async function loadEditors(){
   list.innerHTML = emails.map(email => `
     <div class="item editorItem">
       <span class="editorEmail">📧 ${escAttr(email)}</span>
-      <button class="small danger" data-act="removeEditor" data-email="${escAttr(email)}">Quitar acceso</button>
+      <button class="mini danger" data-act="removeEditor" data-email="${escAttr(email)}">Quitar acceso</button>
     </div>
   `).join("");
 }

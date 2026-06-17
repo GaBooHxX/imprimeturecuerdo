@@ -32,16 +32,13 @@
   <section id="memorialPick" class="card" hidden>
     <h2>Memorial</h2>
     <div class="row">
-      <input id="memorialIdInput" class="input" placeholder="Camilo-Fuentes" value="Camilo-Fuentes" />
-      <button id="btnLoadMemorial" class="btn" type="button">Cargar</button>
+      <select id="memorialIdSelect" class="input memorialSelect">
+        <option value="">Cargando memoriales…</option>
+      </select>
       <button id="btnNewMemorial" class="btn primary ownerOnly" type="button" hidden>➕ Nuevo memorial</button>
       <a id="linkView" class="btn btnViewLive" href="#" target="_blank" rel="noopener">👁 Ver memorial en vivo ↗</a>
     </div>
     <div class="muted" style="margin-top:10px">Editando: <strong id="memorialActive">—</strong></div>
-    <p class="muted ownerOnly" style="margin-top:8px" hidden>
-      💡 Para crear un <strong>memorial nuevo</strong>, escribe un nombre sin espacios
-      (ej: <code>Tia-Maria</code>), pulsa <strong>Cargar</strong> y empieza a editar.
-    </p>
   </section>
 
   <!-- ====== Todo lo editable (solo si eres admin) ====== -->
